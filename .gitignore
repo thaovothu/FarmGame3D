@@ -1,0 +1,64 @@
+# ==========================================
+# Unity Project Git Ignore
+# ==========================================
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+Desktop.ini
+
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+UserSettings/
+MemoryCaptures/
+Recordings/
+
+# Rider / Visual Studio / VS Code
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.user
+*.suo
+*.tmp
+*.pidb
+*.booproj
+*.svd
+
+# Builds
+*.apk
+*.aab
+*.xcodeproj
+*.xcworkspace
+*.exe
+*.app
+*.ipa
+*.unitypackage
+
+# Cache / Backup
+*.stackdump
+*.bak
+*.backup
+*.tmp
+*.log
+*.old
+*.orig
+
+# Unity Asset Store tools
+Assets/AssetStoreTools*
+
+# Crash Reports
+sysinfo.txt
+crash-report.txt
+
+# Ignore CSV backup files (keep only main config)
+Config/*.bak
+Config/*.tmp
+Config/*.csv~
