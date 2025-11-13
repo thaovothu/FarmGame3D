@@ -550,8 +550,8 @@ private void Update()
                 {
                     // Cây chưa chín → hiện thời gian còn lại
                     var timeRemaining = plot.Plant.GetTimeUntilNextHarvest(now, equipmentBonus);
-                    var minutes = Mathf.CeilToInt(timeRemaining);
-                    var seconds = Mathf.CeilToInt((timeRemaining - Mathf.Floor(timeRemaining)) * 60);
+                    var minutes = (int)timeRemaining;  // làm tròn xuống để lấy phần phút
+                    var seconds = (int)((timeRemaining - minutes) * 60);  // phần dư * 60 = giây
                     
                     string timeMsg;
                     if (minutes > 0)
@@ -590,8 +590,8 @@ private void Update()
                 {
                     // Chưa sẵn sàng → hiện thời gian còn lại
                     var timeRemaining = plot.Animal.GetTimeUntilNextProduction(now, equipmentBonus);
-                    var minutes = Mathf.CeilToInt(timeRemaining);
-                    var seconds = Mathf.CeilToInt((timeRemaining - Mathf.Floor(timeRemaining)) * 60);
+                    var minutes = (int)timeRemaining;  // làm tròn xuống để lấy phần phút
+                    var seconds = (int)((timeRemaining - minutes) * 60);  // phần dư * 60 = giây
                     
                     string timeMsg;
                     if (minutes > 0)

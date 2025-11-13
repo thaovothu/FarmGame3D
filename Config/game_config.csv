@@ -11,7 +11,7 @@ Strawberry,5,1,20,10,40
 # Animal Configuration
 [Animals]
 Type,ProductionTimeMinutes,YieldPerProduction,LifespanProductions,ProductPrice,AnimalPrice
-DairyCow,1,1,100,15,100
+DairyCow,1,1,1,15,100
 
 # Worker Configuration
 [Workers]
