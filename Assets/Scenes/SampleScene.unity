@@ -9571,15 +9571,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   plotPrefab: {fileID: 4842710852021999723, guid: 6d71d422df9503e4aa25afd46b90a509, type: 3}
-  tomatoPrefab: {fileID: 1503716859743951098, guid: 234bc689b44c6ee438d98d25b08ba37a, type: 3}
-  blueberryPrefab: {fileID: 2964684452279907652, guid: 87be99ab35bdfc14789a18316a3cd83a, type: 3}
-  strawberryPrefab: {fileID: 8306089092702475529, guid: aa3e2e3de11394644a391ec487622982, type: 3}
-  cowPrefab: {fileID: 5073811429038975047, guid: 7ff2b29051030e14f9a1fa744cd94f1c, type: 3}
-  harvestReadyIndicatorPrefab: {fileID: 6572997806418717164, guid: b856bdf1a7441744281d9a07f67193c1, type: 3}
+  tomatoYoungPrefab: {fileID: 5449757264954136790, guid: 84bc466507eebbe4ca484dba11df0527, type: 3}
+  blueberryYoungPrefab: {fileID: 5449757264954136790, guid: 84bc466507eebbe4ca484dba11df0527, type: 3}
+  strawberryYoungPrefab: {fileID: 5449757264954136790, guid: 84bc466507eebbe4ca484dba11df0527, type: 3}
+  cowYoungPrefab: {fileID: 5073811429038975047, guid: 7ff2b29051030e14f9a1fa744cd94f1c, type: 3}
   tomatoGrowingPrefab: {fileID: 2044659638176490916, guid: 190a039f34664b64d95f3e6a5f6f59bb, type: 3}
   blueberryGrowingPrefab: {fileID: 6072531659676575414, guid: 7c5e9124f0731534ca01d05f7de13d9f, type: 3}
   strawberryGrowingPrefab: {fileID: 4770686214188001393, guid: 43639a3d546b96642aa6bd83fb319b41, type: 3}
-  cowGrowingPrefab: {fileID: 5073811429038975047, guid: 7ff2b29051030e14f9a1fa744cd94f1c, type: 3}
+  cowGrowingPrefab: {fileID: 5073811429038975047, guid: 1ea646f6687b11e40842944e4dfe9ba2, type: 3}
+  tomatoPrefab: {fileID: 1503716859743951098, guid: 234bc689b44c6ee438d98d25b08ba37a, type: 3}
+  blueberryPrefab: {fileID: 2964684452279907652, guid: 87be99ab35bdfc14789a18316a3cd83a, type: 3}
+  strawberryPrefab: {fileID: 8306089092702475529, guid: aa3e2e3de11394644a391ec487622982, type: 3}
+  cowPrefab: {fileID: 1202723853787164137, guid: 5801fc7f4ce55b54c8a8551076b016a6, type: 3}
   growingIndicatorPrefab: {fileID: 6072531659676575414, guid: 7c5e9124f0731534ca01d05f7de13d9f, type: 3}
   plotsParent: {fileID: 1580582615}
   spacing: 6.2

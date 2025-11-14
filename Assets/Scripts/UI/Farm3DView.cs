@@ -7,21 +7,26 @@ namespace FarmGame.UI
     public class Farm3DView : MonoBehaviour
     {
         public GameObject plotPrefab;
-        public GameObject tomatoPrefab;
-        public GameObject blueberryPrefab;
-        public GameObject strawberryPrefab;
-        public GameObject cowPrefab;
-
-        [Header("Harvest Indicators")]
-        public GameObject harvestReadyIndicatorPrefab; // prefab hiển thị số quả sẵn sàng thu hoạch (UI/3D)
         
-        [Header("Growing Indicators Per Type")]
+        [Header("Stage 1: Young/Seedling Indicators (0% - 50%)")]
+        public GameObject tomatoYoungPrefab;
+        public GameObject blueberryYoungPrefab;
+        public GameObject strawberryYoungPrefab;
+        public GameObject cowYoungPrefab;
+        
+        [Header("Stage 2: Growing Indicators (50% - 100%)")]
         public GameObject tomatoGrowingPrefab;
         public GameObject blueberryGrowingPrefab;
         public GameObject strawberryGrowingPrefab;
         public GameObject cowGrowingPrefab;
+        
+        [Header("Stage 3: Ready to Harvest (100% + SpoilageTime)")]
+        public GameObject tomatoPrefab; // Hiển thị sau 100%, trong thời gian SpoilageTimeMinutes
+        public GameObject blueberryPrefab;
+        public GameObject strawberryPrefab;
+        public GameObject cowPrefab;
 
-        public GameObject growingIndicatorPrefab;
+        public GameObject growingIndicatorPrefab; // fallback
 
         public Transform plotsParent;
         public float spacing = 3f;
@@ -132,30 +137,62 @@ namespace FarmGame.UI
         }
 
         public GameObject CowPrefab => cowPrefab;
-
-        public GameObject HarvestReadyIndicatorPrefab => harvestReadyIndicatorPrefab;
         public GameObject GrowingIndicatorPrefab => growingIndicatorPrefab;
 
-        public GameObject GetGrowingIndicatorPrefab(CropType type)
+        /// <summary>
+        /// Get indicator prefab for young stage (0-50%)
+        /// </summary>
+        public GameObject GetYoungIndicatorPrefab(CropType type)
         {
-            return type switch
+            GameObject prefab = type switch
             {
-                CropType.Tomato => tomatoGrowingPrefab ?? growingIndicatorPrefab,
-                CropType.Blueberry => blueberryGrowingPrefab ?? growingIndicatorPrefab,
-                CropType.Strawberry => strawberryGrowingPrefab ?? growingIndicatorPrefab,
-                _ => growingIndicatorPrefab
+                CropType.Tomato => tomatoYoungPrefab,
+                CropType.Blueberry => blueberryYoungPrefab,
+                CropType.Strawberry => strawberryYoungPrefab,
+                _ => null
             };
+            return prefab != null ? prefab : growingIndicatorPrefab;
         }
 
-        // overload for animals (you can map by AnimalType)
+        /// <summary>
+        /// Get indicator prefab for growing stage (50-100%)
+        /// </summary>
+        public GameObject GetGrowingIndicatorPrefab(CropType type)
+        {
+            GameObject prefab = type switch
+            {
+                CropType.Tomato => tomatoGrowingPrefab,
+                CropType.Blueberry => blueberryGrowingPrefab,
+                CropType.Strawberry => strawberryGrowingPrefab,
+                _ => null
+            };
+            return prefab != null ? prefab : growingIndicatorPrefab;
+        }
+
+        /// <summary>
+        /// Get indicator prefab for young animal stage (0-50%)
+        /// </summary>
+        public GameObject GetYoungIndicatorPrefabForAnimal(AnimalType aType)
+        {
+            GameObject prefab = aType switch
+            {
+                AnimalType.DairyCow => cowYoungPrefab,
+                _ => null
+            };
+            return prefab != null ? prefab : growingIndicatorPrefab;
+        }
+
+        /// <summary>
+        /// Get indicator prefab for growing animal stage (50-100%)
+        /// </summary>
         public GameObject GetGrowingIndicatorPrefabForAnimal(AnimalType aType)
         {
-            // extend if more animals added
-            return aType switch
+            GameObject prefab = aType switch
             {
-                AnimalType.DairyCow => cowGrowingPrefab ?? growingIndicatorPrefab,
-                _ => growingIndicatorPrefab
+                AnimalType.DairyCow => cowGrowingPrefab,
+                _ => null
             };
+            return prefab != null ? prefab : growingIndicatorPrefab;
         }
 
         private void Clear()
