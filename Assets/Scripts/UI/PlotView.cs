@@ -68,6 +68,14 @@ namespace FarmGame.UI
 
         void OnMouseDown()
         {
+            // Chặn click vào plot khi đang hover UI (tránh click xuyên qua UI panel)
+            if (UnityEngine.EventSystems.EventSystem.current != null && 
+                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                Debug.Log($"PlotView: Click blocked - pointer over UI");
+                return;
+            }
+
             Debug.Log($"PlotView: OnMouseDown called for plot {_plotIndex}");
             
             if (_controller == null)
