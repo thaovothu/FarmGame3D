@@ -16,6 +16,24 @@ namespace FarmGame.UI
         [SerializeField] private Text goldText;  // Text hiển thị số gold
         [SerializeField] private GameObject winPanel;
 
+        [Header("Individual Display Text - Inventory/Balo")]
+        [SerializeField] private Text tomatoSeedText;      // Số hạt cà chua
+        [SerializeField] private Text blueberrySeedText;   // Số hạt việt quất
+        [SerializeField] private Text strawberrySeedText;  // Số hạt dâu
+        [SerializeField] private Text dairyCowText;        // Số bò sữa trong kho
+        [SerializeField] private Text tomatoHarvestText;   // Số cà chua đã thu hoạch (Balo)
+        [SerializeField] private Text blueberryHarvestText;// Số việt quất đã thu hoạch (Balo)
+        [SerializeField] private Text strawberryHarvestText;// Số dâu đã thu hoạch (Balo)
+        [SerializeField] private Text milkText;            // Số sữa đã thu (Balo)
+        [SerializeField] private Text equipmentLevelText;  // Cấp dụng cụ
+        [SerializeField] private Text workerCountText;     // Số lượng worker
+        
+        [Header("Shop Display Text - Harvested Products")]
+        [SerializeField] private Text shopTomatoHarvestText;   // Số cà chua đã thu hoạch (Shop)
+        [SerializeField] private Text shopBlueberryHarvestText;// Số việt quất đã thu hoạch (Shop)
+        [SerializeField] private Text shopStrawberryHarvestText;// Số dâu đã thu hoạch (Shop)
+        [SerializeField] private Text shopMilkText;            // Số sữa đã thu (Shop)
+
         [Header("Action Buttons")]
         [SerializeField] private Button upgradeEquipmentButton;
         [SerializeField] private Button buyPlotButton;
@@ -37,7 +55,13 @@ namespace FarmGame.UI
         [SerializeField] private Transform seedButtonContainer;
         [SerializeField] private Button seedButtonPrefab;
         [SerializeField] private Button closeSeedPanelButton;
-
+        
+        [Header("Seed/Animal Sprites")]
+        [SerializeField] private Sprite tomatoSprite;
+        [SerializeField] private Sprite blueberrySprite;
+        [SerializeField] private Sprite strawberrySprite;
+        [SerializeField] private Sprite dairyCowSprite;
+  
         private GameController _gameController;
         private float _messageDisplayTime = 0f;
         private const float MESSAGE_DURATION = 3f;
@@ -96,6 +120,11 @@ namespace FarmGame.UI
             UpdatePlotsDisplay();
             UpdateMessageDisplay();
             UpdateGoldDisplay();
+            UpdateSeedsDisplay();
+            UpdateAnimalsDisplay();
+            UpdateHarvestedDisplay();
+            UpdateEquipmentDisplay();
+            UpdateWorkersDisplay();
         }
 
         private void UpdateGoldDisplay()
@@ -104,7 +133,88 @@ namespace FarmGame.UI
             if (_gameController == null || _gameController.Farm == null) return;
 
             var gold = _gameController.Farm.Inventory.Gold;
-            goldText.text = $"Gold: {gold:N0}";  // N0 = định dạng số có dấu phẩy (1,000)
+            goldText.text = $"{gold:N0}";  // N0 = định dạng số có dấu phẩy (1,000)
+        }
+
+        private void UpdateSeedsDisplay()
+        {
+            if (_gameController == null || _gameController.Farm == null) return;
+            var inv = _gameController.Farm.Inventory;
+
+            if (tomatoSeedText != null)
+                tomatoSeedText.text = $"{inv.GetSeedCount(CropType.Tomato)}";
+            
+            if (blueberrySeedText != null)
+                blueberrySeedText.text = $"{inv.GetSeedCount(CropType.Blueberry)}";
+            
+            if (strawberrySeedText != null)
+                strawberrySeedText.text = $"{inv.GetSeedCount(CropType.Strawberry)}";
+        }
+
+        private void UpdateAnimalsDisplay()
+        {
+            if (_gameController == null || _gameController.Farm == null) return;
+            var inv = _gameController.Farm.Inventory;
+
+            if (dairyCowText != null)
+                dairyCowText.text = $"{inv.DairyCowCount}";
+        }
+
+        private void UpdateHarvestedDisplay()
+        {
+            if (_gameController == null || _gameController.Farm == null) return;
+            var inv = _gameController.Farm.Inventory;
+
+            // Update Balo/Inventory display
+            if (tomatoHarvestText != null)
+                tomatoHarvestText.text = $"{inv.GetHarvestedCount(CropType.Tomato)}";
+            
+            if (blueberryHarvestText != null)
+                blueberryHarvestText.text = $"{inv.GetHarvestedCount(CropType.Blueberry)}";
+            
+            if (strawberryHarvestText != null)
+                strawberryHarvestText.text = $"{inv.GetHarvestedCount(CropType.Strawberry)}";
+            
+            if (milkText != null)
+                milkText.text = $"{inv.Milk}";
+            
+            // Update Shop display (cùng dữ liệu)
+            if (shopTomatoHarvestText != null)
+                shopTomatoHarvestText.text = $"{inv.GetHarvestedCount(CropType.Tomato)}";
+            
+            if (shopBlueberryHarvestText != null)
+                shopBlueberryHarvestText.text = $"{inv.GetHarvestedCount(CropType.Blueberry)}";
+            
+            if (shopStrawberryHarvestText != null)
+                shopStrawberryHarvestText.text = $"{inv.GetHarvestedCount(CropType.Strawberry)}";
+            
+            if (shopMilkText != null)
+                shopMilkText.text = $"{inv.Milk}";
+        }
+
+        private void UpdateEquipmentDisplay()
+        {
+            if (_gameController == null || _gameController.Farm == null) return;
+            var inv = _gameController.Farm.Inventory;
+
+            if (equipmentLevelText != null)
+            {
+                var bonus = inv.GetEquipmentBonus() * 100;
+                equipmentLevelText.text = $"{inv.EquipmentLevel} (+{bonus:F0}%)";
+            }
+        }
+
+        private void UpdateWorkersDisplay()
+        {
+            if (_gameController == null || _gameController.Farm == null) return;
+            var farm = _gameController.Farm;
+
+            if (workerCountText != null)
+            {
+                var idle = farm.GetIdleWorkerCount();
+                var total = farm.Workers.Count;
+                workerCountText.text = $"{idle}/{total}";
+            }
         }
 
         private void UpdateResourcesDisplay()
@@ -470,10 +580,28 @@ namespace FarmGame.UI
                 
                 hasItems = true;
                 var btn = Instantiate(seedButtonPrefab, seedButtonContainer);
+                
+                // Set sprite cho button (tìm Image component đầu tiên trong button hoặc children)
+                var btnImage = btn.transform.Find("Icon")?.GetComponent<Image>();
+                if (btnImage == null)
+                {
+                    btnImage = btn.GetComponentInChildren<Image>();
+                }
+                
+                if (btnImage != null)
+                {
+                    var sprite = GetSpriteForCropType(seed.type);
+                    if (sprite != null)
+                    {
+                        btnImage.sprite = sprite;
+                        Debug.Log($"Set sprite for {seed.type}");
+                    }
+                }
+                
                 var btnText = btn.GetComponentInChildren<Text>();
                 if (btnText != null)
                 {
-                    btnText.text = $"🌱 {seed.type} ({seed.count})";
+                    btnText.text = $"{seed.count}";
                 }
 
                 // Capture biến trong closure
@@ -490,10 +618,24 @@ namespace FarmGame.UI
             {
                 hasItems = true;
                 var btn = Instantiate(seedButtonPrefab, seedButtonContainer);
+                
+                // Set sprite cho dairy cow
+                var btnImage = btn.transform.Find("Icon")?.GetComponent<Image>();
+                if (btnImage == null)
+                {
+                    btnImage = btn.GetComponentInChildren<Image>();
+                }
+                
+                if (btnImage != null && dairyCowSprite != null)
+                {
+                    btnImage.sprite = dairyCowSprite;
+                    Debug.Log("Set sprite for DairyCow");
+                }
+                
                 var btnText = btn.GetComponentInChildren<Text>();
                 if (btnText != null)
                 {
-                    btnText.text = $"🐄 Bò Sữa ({inventory.DairyCowCount})";
+                    btnText.text = $"{inventory.DairyCowCount}";
                 }
 
                 btn.onClick.AddListener(() =>
@@ -515,6 +657,12 @@ namespace FarmGame.UI
             }
 
             seedSelectionPanel.SetActive(true);
+            
+            // Force rebuild layout để đảm bảo buttons hiển thị
+            if (seedButtonContainer != null)
+            {
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(seedButtonContainer.GetComponent<RectTransform>());
+            }
         }
 
         /// <summary>
@@ -535,6 +683,24 @@ namespace FarmGame.UI
         public void ShowPlotInfo(string info)
         {
             ShowMessage(info);
+        }
+        
+        /// <summary>
+        /// Lấy sprite tương ứng với loại cây trồng
+        /// </summary>
+        private Sprite GetSpriteForCropType(CropType cropType)
+        {
+            switch (cropType)
+            {
+                case CropType.Tomato:
+                    return tomatoSprite;
+                case CropType.Blueberry:
+                    return blueberrySprite;
+                case CropType.Strawberry:
+                    return strawberrySprite;
+                default:
+                    return null;
+            }
         }
     }
 }
