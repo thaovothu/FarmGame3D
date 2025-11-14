@@ -139,16 +139,26 @@ namespace FarmGame.Domain.Services
                 return 0;
 
             var equipmentBonus = farm.Inventory.GetEquipmentBonus();
+            
+            // Log time remaining before spoilage
+            var timeUntilSpoilage = plot.Plant.GetTimeUntilSpoilage(currentTime, _config.SpoilageTimeMinutes, equipmentBonus);
+            if (timeUntilSpoilage >= 0)
+            {
+                Debug.Log($"[FarmService] Harvesting {plot.Plant.CropType} on plot {plotId}. Time remaining before spoilage: {timeUntilSpoilage:F2} minutes");
+            }
+            
             var harvested = plot.Plant.Harvest(currentTime, equipmentBonus);
 
             if (harvested > 0)
             {
                 farm.Inventory.AddHarvest(plot.Plant.CropType, harvested);
+                Debug.Log($"[FarmService] Harvested {harvested} {plot.Plant.CropType}. Harvest count: {plot.Plant.HarvestCount}/{plot.Plant.LifespanYields}");
             }
 
             // If plant is dead, clear the plot
             if (!plot.Plant.IsAlive)
             {
+                Debug.Log($"[FarmService] Plant {plot.Plant.CropType} reached end of lifespan. Clearing plot {plotId}");
                 plot.Clear();
             }
 
@@ -165,16 +175,26 @@ namespace FarmGame.Domain.Services
                 return 0;
 
             var equipmentBonus = farm.Inventory.GetEquipmentBonus();
+            
+            // Log time remaining before spoilage
+            var timeUntilSpoilage = plot.Animal.GetTimeUntilSpoilage(currentTime, _config.SpoilageTimeMinutes, equipmentBonus);
+            if (timeUntilSpoilage >= 0)
+            {
+                Debug.Log($"[FarmService] Collecting from {plot.Animal.AnimalType} on plot {plotId}. Time remaining before spoilage: {timeUntilSpoilage:F2} minutes");
+            }
+            
             var collected = plot.Animal.Collect(currentTime, equipmentBonus);
 
             if (collected > 0)
             {
                 farm.Inventory.AddMilk(collected);
+                Debug.Log($"[FarmService] Collected {collected} milk from {plot.Animal.AnimalType}. Production count: {plot.Animal.ProductionCount}/{plot.Animal.LifespanProductions}");
             }
 
             // If animal is dead, clear the plot
             if (!plot.Animal.IsAlive)
             {
+                Debug.Log($"[FarmService] Animal {plot.Animal.AnimalType} reached end of lifespan. Clearing plot {plotId}");
                 plot.Clear();
             }
 
@@ -186,10 +206,23 @@ namespace FarmGame.Domain.Services
         /// </summary>
         public void ClearSpoiledPlots(Farm farm, DateTime currentTime)
         {
+            var equipmentBonus = farm.Inventory.GetEquipmentBonus();
             foreach (var plot in farm.Plots)
             {
-                if (plot.NeedsClearing(currentTime, _config.SpoilageTimeMinutes))
+                if (plot.NeedsClearing(currentTime, _config.SpoilageTimeMinutes, equipmentBonus))
                 {
+                    // Log what is being cleared
+                    if (plot.Plant != null)
+                    {
+                        var timeUntilSpoilage = plot.Plant.GetTimeUntilSpoilage(currentTime, _config.SpoilageTimeMinutes, equipmentBonus);
+                        Debug.Log($"[FarmService] ⚠️ SPOILED! Clearing {plot.Plant.CropType} from plot {plot.Id}. Product expired (time remaining was: {timeUntilSpoilage:F2} min)");
+                    }
+                    else if (plot.Animal != null)
+                    {
+                        var timeUntilSpoilage = plot.Animal.GetTimeUntilSpoilage(currentTime, _config.SpoilageTimeMinutes, equipmentBonus);
+                        Debug.Log($"[FarmService] ⚠️ SPOILED! Clearing {plot.Animal.AnimalType} from plot {plot.Id}. Product expired (time remaining was: {timeUntilSpoilage:F2} min)");
+                    }
+                    
                     plot.Clear();
                 }
             }

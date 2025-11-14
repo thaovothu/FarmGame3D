@@ -1,10 +1,10 @@
 using System;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using FarmGame.Domain;
 using FarmGame.Domain.Entities;
 using FarmGame.Domain.Services;
-using FarmGame.Infrastructure;
 using FarmGame.Infrastructure;
 namespace FarmGame.UI
 {
@@ -279,7 +279,18 @@ private void Update()
         {
             try
             {
+                // Store plot count before clearing
+                var plotsBeforeClearing = _farm.Plots.Count(p => p.Status != PlotStatus.Empty);
+                
                 _farmService.ClearSpoiledPlots(_farm, currentTime);
+                
+                // Check if any plots were cleared and refresh UI
+                var plotsAfterClearing = _farm.Plots.Count(p => p.Status != PlotStatus.Empty);
+                if (plotsBeforeClearing != plotsAfterClearing)
+                {
+                    // Some plants/animals were spoiled and cleared - refresh the 3D view
+                    FindObjectOfType<Farm3DView>()?.RenderPlots();
+                }
             }
             catch (Exception ex)
             {
@@ -532,7 +543,27 @@ private void Update()
                 
                 if (readyHarvests > 0)
                 {
-                    // Cây đã chín → thu hoạch
+                    // GIAI ĐOẠN 2: Cây đã chín - có thể thu hoạch hoặc xem thời gian còn lại trước khi spoil
+                    
+                    // Check if clicking to harvest or just checking status
+                    var timeUntilSpoilage = plot.Plant.GetTimeUntilSpoilage(now, _config.SpoilageTimeMinutes, equipmentBonus);
+                    
+                    if (timeUntilSpoilage >= 0)
+                    {
+                        // Show spoilage countdown
+                        var minutes = (int)timeUntilSpoilage;
+                        var seconds = (int)((timeUntilSpoilage - minutes) * 60);
+                        
+                        string timeMsg;
+                        if (minutes > 0)
+                            timeMsg = $"{plot.Plant.CropType}: ✅ Sẵn sàng thu hoạch! Còn {minutes} phút {seconds} giây trước khi mất";
+                        else
+                            timeMsg = $"{plot.Plant.CropType}: ✅ Sẵn sàng thu hoạch! Còn {seconds} giây trước khi mất";
+                        
+                        _uiManager?.ShowPlotInfo(timeMsg);
+                    }
+                    
+                    // Try to harvest
                     var harvested = _farmService.HarvestCrop(_farm, plot.Id, now);
                     if (harvested > 0)
                     {
@@ -541,23 +572,24 @@ private void Update()
                         FindObjectOfType<Farm3DView>()?.RenderPlots();
                         _uiManager?.UpdateDisplay();
                     }
-                    else
-                    {
-                        _uiManager?.ShowMessage("Không thể thu hoạch!");
-                    }
                 }
                 else
                 {
-                    // Cây chưa chín → hiện thời gian còn lại
-                    var timeRemaining = plot.Plant.GetTimeUntilNextHarvest(now, equipmentBonus);
-                    var minutes = (int)timeRemaining;  // làm tròn xuống để lấy phần phút
-                    var seconds = (int)((timeRemaining - minutes) * 60);  // phần dư * 60 = giây
+                    // GIAI ĐOẠN 1: Cây chưa chín → hiện thời gian còn lại để chín
+                    var timeUntilReady = plot.Plant.GetTimeUntilNextHarvest(now, equipmentBonus);
+                    
+                    // Log để debug
+                    var adjustedGrowthTime = plot.Plant.GrowthTimeMinutes / (1 + equipmentBonus);
+                    Debug.Log($"[GameController] Equipment Level: {_farm.Inventory.EquipmentLevel}, Bonus: {equipmentBonus*100:F0}%, Original Growth: {plot.Plant.GrowthTimeMinutes}m, Adjusted: {adjustedGrowthTime}m, Time Until Ready: {timeUntilReady}m");
+                    
+                    var minutes = (int)timeUntilReady;
+                    var seconds = (int)((timeUntilReady - minutes) * 60);
                     
                     string timeMsg;
                     if (minutes > 0)
-                        timeMsg = $"{plot.Plant.CropType}: Còn {minutes} phút {seconds} giây để thu hoạch";
+                        timeMsg = $"{plot.Plant.CropType}: Còn {minutes} phút {seconds} giây để thu hoạch (Equipment +{equipmentBonus*100:F0}%)";
                     else
-                        timeMsg = $"{plot.Plant.CropType}: Còn {seconds} giây để thu hoạch";
+                        timeMsg = $"{plot.Plant.CropType}: Còn {seconds} giây để thu hoạch (Equipment +{equipmentBonus*100:F0}%)";
                     
                     _uiManager?.ShowPlotInfo(timeMsg);
                 }
@@ -572,7 +604,26 @@ private void Update()
                 
                 if (readyProductions > 0)
                 {
-                    // Sẵn sàng lấy sữa
+                    // GIAI ĐOẠN 2: Sữa đã chín - có thể lấy hoặc xem thời gian còn lại trước khi spoil
+                    
+                    var timeUntilSpoilage = plot.Animal.GetTimeUntilSpoilage(now, _config.SpoilageTimeMinutes, equipmentBonus);
+                    
+                    if (timeUntilSpoilage >= 0)
+                    {
+                        // Show spoilage countdown
+                        var minutes = (int)timeUntilSpoilage;
+                        var seconds = (int)((timeUntilSpoilage - minutes) * 60);
+                        
+                        string timeMsg;
+                        if (minutes > 0)
+                            timeMsg = $"Bò: ✅ Sẵn sàng lấy sữa! Còn {minutes} phút {seconds} giây trước khi mất";
+                        else
+                            timeMsg = $"Bò: ✅ Sẵn sàng lấy sữa! Còn {seconds} giây trước khi mất";
+                        
+                        _uiManager?.ShowPlotInfo(timeMsg);
+                    }
+                    
+                    // Try to collect
                     var collected = _farmService.CollectMilk(_farm, plot.Id, now);
                     if (collected > 0)
                     {
@@ -581,23 +632,24 @@ private void Update()
                         FindObjectOfType<Farm3DView>()?.RenderPlots();
                         _uiManager?.UpdateDisplay();
                     }
-                    else
-                    {
-                        _uiManager?.ShowMessage("Không thể thu sữa!");
-                    }
                 }
                 else
                 {
-                    // Chưa sẵn sàng → hiện thời gian còn lại
-                    var timeRemaining = plot.Animal.GetTimeUntilNextProduction(now, equipmentBonus);
-                    var minutes = (int)timeRemaining;  // làm tròn xuống để lấy phần phút
-                    var seconds = (int)((timeRemaining - minutes) * 60);  // phần dư * 60 = giây
+                    // GIAI ĐOẠN 1: Sữa chưa chín → hiện thời gian còn lại để cho sữa
+                    var timeUntilReady = plot.Animal.GetTimeUntilNextProduction(now, equipmentBonus);
+                    
+                    // Log để debug
+                    var adjustedProductionTime = plot.Animal.ProductionTimeMinutes / (1 + equipmentBonus);
+                    Debug.Log($"[GameController] Equipment Level: {_farm.Inventory.EquipmentLevel}, Bonus: {equipmentBonus*100:F0}%, Original Production: {plot.Animal.ProductionTimeMinutes}m, Adjusted: {adjustedProductionTime}m, Time Until Ready: {timeUntilReady}m");
+                    
+                    var minutes = (int)timeUntilReady;
+                    var seconds = (int)((timeUntilReady - minutes) * 60);
                     
                     string timeMsg;
                     if (minutes > 0)
-                        timeMsg = $"Bò: Còn {minutes} phút {seconds} giây để cho sữa";
+                        timeMsg = $"Bò: Còn {minutes} phút {seconds} giây để cho sữa (Equipment +{equipmentBonus*100:F0}%)";
                     else
-                        timeMsg = $"Bò: Còn {seconds} giây để cho sữa";
+                        timeMsg = $"Bò: Còn {seconds} giây để cho sữa (Equipment +{equipmentBonus*100:F0}%)";
                     
                     _uiManager?.ShowPlotInfo(timeMsg);
                 }
