@@ -13,6 +13,7 @@ namespace FarmGame.UI
         [SerializeField] private Text resourcesText;
         [SerializeField] private Text plotsText;
         [SerializeField] private Text messageText;
+        [SerializeField] private Text goldText;  // Text hiển thị số gold
         [SerializeField] private GameObject winPanel;
 
         [Header("Action Buttons")]
@@ -94,6 +95,16 @@ namespace FarmGame.UI
             UpdateResourcesDisplay();
             UpdatePlotsDisplay();
             UpdateMessageDisplay();
+            UpdateGoldDisplay();
+        }
+
+        private void UpdateGoldDisplay()
+        {
+            if (goldText == null) return;
+            if (_gameController == null || _gameController.Farm == null) return;
+
+            var gold = _gameController.Farm.Inventory.Gold;
+            goldText.text = $"Gold: {gold:N0}";  // N0 = định dạng số có dấu phẩy (1,000)
         }
 
         private void UpdateResourcesDisplay()
