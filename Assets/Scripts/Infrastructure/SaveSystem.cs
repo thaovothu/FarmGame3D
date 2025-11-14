@@ -117,6 +117,9 @@ namespace FarmGame.Infrastructure
                 // populate runtime DateTime helper
                 saveData.UpdateSaveTimeFromString();
 
+                // Clean invalid animals after load
+                CleanInvalidAnimalsAfterLoad(saveData.Farm);
+
                 Debug.Log($"Game loaded from: {SaveFilePath}");
                 return saveData;
             }
@@ -148,6 +151,21 @@ namespace FarmGame.Infrastructure
         public static string GetSaveFilePath()
         {
             return SaveFilePath;
+        }
+
+        public static void CleanInvalidAnimalsAfterLoad(Farm farm)
+        {
+            if (farm?.Plots == null) return;
+            foreach (var p in farm.Plots)
+            {
+                if (p?.Animal == null) continue;
+                // Nếu animal có ProductionTimeMinutes <= 0 hoặc DairyCowCount <= 0 thì xóa
+                if (p.Animal.ProductionTimeMinutes <= 0 || farm.Inventory.DairyCowCount <= 0)
+                {
+                    p.Animal = null;
+                    p.Status = PlotStatus.Empty;
+                }
+            }
         }
     }
 }

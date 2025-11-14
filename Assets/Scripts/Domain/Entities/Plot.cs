@@ -54,15 +54,15 @@ namespace FarmGame.Domain.Entities
             Status = PlotStatus.Empty;
         }
 
-        public bool NeedsClearing(DateTime currentTime, float spoilageTimeMinutes)
+        public bool NeedsClearing(DateTime currentTime, float spoilageTimeMinutes, float equipmentBonus = 0)
         {
             if (Status == PlotStatus.HasPlant && Plant != null)
             {
-                return !Plant.IsAlive || Plant.HasSpoiled(currentTime, spoilageTimeMinutes);
+                return !Plant.IsAlive || Plant.HasSpoiled(currentTime, spoilageTimeMinutes, equipmentBonus);
             }
             else if (Status == PlotStatus.HasAnimal && Animal != null)
             {
-                return !Animal.IsAlive || Animal.HasSpoiled(currentTime, spoilageTimeMinutes);
+                return !Animal.IsAlive || Animal.HasSpoiled(currentTime, spoilageTimeMinutes, equipmentBonus);
             }
             return false;
         }

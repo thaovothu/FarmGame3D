@@ -116,38 +116,54 @@ namespace FarmGame.Tests.Domain
         }
 
         [Test]
-        public void Plant_HasSpoiled_AfterFinalHarvestAndSpoilageTime()
+        public void Plant_HasSpoiled_WhenReadyHarvestNotCollectedInTime()
         {
-            // Arrange
-            var plantTime = DateTime.Now.AddMinutes(-500);
+            // Arrange - Plant grows in 10 minutes, has 40 yields
+            var plantTime = DateTime.Now.AddMinutes(-100);
             var currentTime = DateTime.Now;
             var plant = new Plant(CropType.Tomato, plantTime, 10f, 1, 40, 5);
             
-            // Harvest to max
-            plant.Harvest(currentTime, 0);
+            // Don't harvest, wait for spoilage (ready harvest waiting > 60 min)
+            // First harvest was ready at plantTime + 10min = Now - 90min
+            // That harvest has been waiting for 90 minutes > 60 spoilage time
             
-            // Act - Check spoilage after 70 minutes (spoilage time is 60)
-            var futureTime = currentTime.AddMinutes(70);
-            var hasSpoiled = plant.HasSpoiled(futureTime, 60);
+            // Act
+            var hasSpoiled = plant.HasSpoiled(currentTime, 60, 0);
 
             // Assert
             Assert.IsTrue(hasSpoiled);
         }
 
         [Test]
-        public void Plant_NotSpoiled_BeforeSpoilageTime()
+        public void Plant_NotSpoiled_WhenReadyHarvestWithinSpoilageTime()
         {
-            // Arrange
-            var plantTime = DateTime.Now.AddMinutes(-500);
+            // Arrange - Plant grows in 10 minutes
+            var plantTime = DateTime.Now.AddMinutes(-30);
             var currentTime = DateTime.Now;
             var plant = new Plant(CropType.Tomato, plantTime, 10f, 1, 40, 5);
             
-            // Harvest to max
-            plant.Harvest(currentTime, 0);
+            // First harvest was ready at plantTime + 10min = Now - 20min
+            // That harvest has been waiting for 20 minutes < 60 spoilage time
             
-            // Act - Check spoilage after 30 minutes (spoilage time is 60)
-            var futureTime = currentTime.AddMinutes(30);
-            var hasSpoiled = plant.HasSpoiled(futureTime, 60);
+            // Act
+            var hasSpoiled = plant.HasSpoiled(currentTime, 60, 0);
+
+            // Assert
+            Assert.IsFalse(hasSpoiled);
+        }
+
+        [Test]
+        public void Plant_NotSpoiled_WhenNoReadyHarvest()
+        {
+            // Arrange - Plant grows in 10 minutes
+            var plantTime = DateTime.Now.AddMinutes(-5);
+            var currentTime = DateTime.Now;
+            var plant = new Plant(CropType.Tomato, plantTime, 10f, 1, 40, 5);
+            
+            // No harvest ready yet (only 5 minutes passed, needs 10)
+            
+            // Act
+            var hasSpoiled = plant.HasSpoiled(currentTime, 60, 0);
 
             // Assert
             Assert.IsFalse(hasSpoiled);

@@ -63,46 +63,99 @@ namespace FarmGame.Domain.Entities
 
         /// <summary>
         /// Calculate how many productions are ready based on current time
+        /// Only returns productions when ALL lifespan productions are complete (can only collect once at end)
         /// </summary>
         public int GetReadyProductionCount(DateTime currentTime, float equipmentBonus = 0)
         {
             if (!IsAlive) return 0;
+            if (ProductionCount > 0) return 0; // Already collected
 
             var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
             var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
-            var readyProductions = (int)(timeSinceLastProduction / adjustedProductionTime);
+            var totalProductionTime = adjustedProductionTime * LifespanProductions;
             
-            // Can't produce more than remaining lifespan
-            var remainingProductions = LifespanProductions - ProductionCount;
-            return Math.Min(readyProductions, remainingProductions);
+            // Only ready when ALL productions are complete
+            if (timeSinceLastProduction >= totalProductionTime)
+            {
+                return LifespanProductions; // Return all productions at once
+            }
+            
+            return 0;
         }
 
         /// <summary>
-        /// Get time in minutes until next production
+        /// Get time in minutes until ALL productions complete (ready to collect)
         /// </summary>
         public float GetTimeUntilNextProduction(DateTime currentTime, float equipmentBonus = 0)
         {
             if (!IsAlive) return 0;
-            if (ProductionCount >= LifespanProductions) return 0;
+            if (ProductionCount > 0) return 0; // Already collected
 
-            var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
             var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
-            var timeUntilNext = adjustedProductionTime - (timeSinceLastProduction % adjustedProductionTime);
+            if (adjustedProductionTime <= 0f) return 0;
             
-            return (float)timeUntilNext;
+            var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
+            var totalProductionTime = adjustedProductionTime * LifespanProductions;
+            
+            // If all productions complete, return 0
+            if (timeSinceLastProduction >= totalProductionTime)
+                return 0;
+            
+            // Time remaining until all productions complete
+            var timeRemaining = totalProductionTime - timeSinceLastProduction;
+            return (float)timeRemaining;
         }
 
         /// <summary>
-        /// Check if animal has died (not collected in time after final production)
+        /// Check if animal has spoiled (uncollected products expired)
+        /// Products spoil if not collected within SpoilageTimeMinutes after ALL productions complete
         /// </summary>
-        public bool HasSpoiled(DateTime currentTime, float spoilageTimeMinutes)
+        public bool HasSpoiled(DateTime currentTime, float spoilageTimeMinutes, float equipmentBonus = 0)
         {
             if (!IsAlive) return true;
-            if (ProductionCount < LifespanProductions) return false;
+            if (ProductionCount > 0) return false; // Already collected, can't spoil
+            
+            var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
+            if (adjustedProductionTime <= 0f) return false;
+            
+            var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
+            var totalProductionTime = adjustedProductionTime * LifespanProductions;
+            
+            // Check if all productions are complete
+            if (timeSinceLastProduction < totalProductionTime)
+                return false; // Still producing, can't spoil
+            
+            // Calculate time since all productions completed
+            var timeSinceAllComplete = timeSinceLastProduction - totalProductionTime;
+            
+            // Has spoiled if waited longer than spoilage time after completion
+            return timeSinceAllComplete > spoilageTimeMinutes;
+        }
 
-            // After final production, player has spoilageTimeMinutes to collect
-            var timeSinceLastPossibleProduction = (currentTime - LastProductionTime).TotalMinutes;
-            return timeSinceLastPossibleProduction > spoilageTimeMinutes;
+        /// <summary>
+        /// Get time remaining in minutes before uncollected products spoil
+        /// Returns -1 if not all productions complete yet or already collected
+        /// </summary>
+        public float GetTimeUntilSpoilage(DateTime currentTime, float spoilageTimeMinutes, float equipmentBonus = 0)
+        {
+            if (!IsAlive) return -1;
+            if (ProductionCount > 0) return -1; // Already collected
+            
+            var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
+            if (adjustedProductionTime <= 0f) return -1;
+            
+            var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
+            var totalProductionTime = adjustedProductionTime * LifespanProductions;
+            
+            // Not ready yet
+            if (timeSinceLastProduction < totalProductionTime)
+                return -1;
+            
+            // Calculate time since all productions completed
+            var timeSinceAllComplete = timeSinceLastProduction - totalProductionTime;
+            var timeRemaining = spoilageTimeMinutes - timeSinceAllComplete;
+            
+            return (float)Math.Max(0, timeRemaining);
         }
 
         /// <summary>

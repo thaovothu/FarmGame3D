@@ -98,5 +98,59 @@ namespace FarmGame.Tests.Domain
             // Assert
             Assert.AreEqual(100, readyCount); // Cannot exceed lifespan of 100
         }
+
+        [Test]
+        public void Animal_HasSpoiled_WhenReadyProductionNotCollectedInTime()
+        {
+            // Arrange - Animal produces every 30 minutes
+            var acquiredTime = DateTime.Now.AddMinutes(-100);
+            var currentTime = DateTime.Now;
+            var animal = new Animal(AnimalType.DairyCow, acquiredTime, 30f, 1, 100, 15);
+            
+            // Don't collect, wait for spoilage (ready production waiting > 60 min)
+            // First production was ready at acquiredTime + 30min = Now - 70min
+            // That production has been waiting for 70 minutes > 60 spoilage time
+            
+            // Act
+            var hasSpoiled = animal.HasSpoiled(currentTime, 60, 0);
+
+            // Assert
+            Assert.IsTrue(hasSpoiled);
+        }
+
+        [Test]
+        public void Animal_NotSpoiled_WhenReadyProductionWithinSpoilageTime()
+        {
+            // Arrange - Animal produces every 30 minutes
+            var acquiredTime = DateTime.Now.AddMinutes(-50);
+            var currentTime = DateTime.Now;
+            var animal = new Animal(AnimalType.DairyCow, acquiredTime, 30f, 1, 100, 15);
+            
+            // First production was ready at acquiredTime + 30min = Now - 20min
+            // That production has been waiting for 20 minutes < 60 spoilage time
+            
+            // Act
+            var hasSpoiled = animal.HasSpoiled(currentTime, 60, 0);
+
+            // Assert
+            Assert.IsFalse(hasSpoiled);
+        }
+
+        [Test]
+        public void Animal_NotSpoiled_WhenNoReadyProduction()
+        {
+            // Arrange - Animal produces every 30 minutes
+            var acquiredTime = DateTime.Now.AddMinutes(-20);
+            var currentTime = DateTime.Now;
+            var animal = new Animal(AnimalType.DairyCow, acquiredTime, 30f, 1, 100, 15);
+            
+            // No production ready yet (only 20 minutes passed, needs 30)
+            
+            // Act
+            var hasSpoiled = animal.HasSpoiled(currentTime, 60, 0);
+
+            // Assert
+            Assert.IsFalse(hasSpoiled);
+        }
     }
 }

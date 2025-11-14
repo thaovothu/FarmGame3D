@@ -31,9 +31,19 @@ namespace FarmGame.Infrastructure
                     ProcessPlantOfflineProgress(plot.Plant, currentTime, equipmentBonus, farm.Inventory);
                     
                     // Check if plant has spoiled
-                    if (plot.Plant.HasSpoiled(currentTime, _config.SpoilageTimeMinutes))
+                    if (plot.Plant.HasSpoiled(currentTime, _config.SpoilageTimeMinutes, equipmentBonus))
                     {
+                        UnityEngine.Debug.Log($"[TimeService] Plant {plot.Plant.CropType} on plot {plot.Id} has SPOILED! Unharvested products expired after {_config.SpoilageTimeMinutes} minutes.");
                         plot.Clear();
+                    }
+                    else
+                    {
+                        // Log time remaining if there are ready harvests
+                        var timeRemaining = plot.Plant.GetTimeUntilSpoilage(currentTime, _config.SpoilageTimeMinutes, equipmentBonus);
+                        if (timeRemaining >= 0)
+                        {
+                            UnityEngine.Debug.Log($"[TimeService] Plant {plot.Plant.CropType} on plot {plot.Id} has ready harvest. Time until spoilage: {timeRemaining:F2} minutes");
+                        }
                     }
                 }
                 else if (plot.Status == PlotStatus.HasAnimal && plot.Animal != null)
@@ -41,9 +51,19 @@ namespace FarmGame.Infrastructure
                     ProcessAnimalOfflineProgress(plot.Animal, currentTime, equipmentBonus, farm.Inventory);
                     
                     // Check if animal has spoiled
-                    if (plot.Animal.HasSpoiled(currentTime, _config.SpoilageTimeMinutes))
+                    if (plot.Animal.HasSpoiled(currentTime, _config.SpoilageTimeMinutes, equipmentBonus))
                     {
+                        UnityEngine.Debug.Log($"[TimeService] Animal {plot.Animal.AnimalType} on plot {plot.Id} has SPOILED! Uncollected products expired after {_config.SpoilageTimeMinutes} minutes.");
                         plot.Clear();
+                    }
+                    else
+                    {
+                        // Log time remaining if there are ready productions
+                        var timeRemaining = plot.Animal.GetTimeUntilSpoilage(currentTime, _config.SpoilageTimeMinutes, equipmentBonus);
+                        if (timeRemaining >= 0)
+                        {
+                            UnityEngine.Debug.Log($"[TimeService] Animal {plot.Animal.AnimalType} on plot {plot.Id} has ready production. Time until spoilage: {timeRemaining:F2} minutes");
+                        }
                     }
                 }
             }
