@@ -10,8 +10,8 @@ namespace FarmGame.UI
         private Farm3DView _farmView;
         private GameController _controller;
         private GameObject _contentInstance;
-        private GameObject _visualInstance;
-        private GameObject _indicatorInstance; // indicator hiển thị trạng thái thu hoạch
+        private GameObject _indicatorInstance; // visual duy nhất hiển thị theo stage
+        private float _lastIndicatorUpdateTime;
 
 
         public void Initialize(int plotIndex, Farm3DView farmView, GameController controller)
@@ -19,7 +19,35 @@ namespace FarmGame.UI
             _plotIndex = plotIndex;
             _farmView = farmView;
             _controller = controller;
+            _lastIndicatorUpdateTime = 0f;
             UpdateView();
+        }
+
+        void Update()
+        {
+            // Update indicator every 1 second to show growth stage changes
+            if (Time.time - _lastIndicatorUpdateTime >= 1f)
+            {
+                _lastIndicatorUpdateTime = Time.time;
+                RefreshIndicator();
+            }
+        }
+
+        private void RefreshIndicator()
+        {
+            if (_controller == null || _controller.Farm == null) return;
+            if (_plotIndex < 0 || _plotIndex >= _controller.Farm.Plots.Count) return;
+
+            var plot = _controller.Farm.Plots[_plotIndex];
+
+            if (plot.Plant != null)
+            {
+                UpdateHarvestIndicator(plot.Plant, null);
+            }
+            else if (plot.Animal != null)
+            {
+                UpdateHarvestIndicator(null, plot.Animal);
+            }
         }
 
         public void UpdateView()
@@ -34,30 +62,17 @@ namespace FarmGame.UI
 
             if (plot.Plant != null)
             {
-                var prefab = _farmView.GetCropPrefab(plot.Plant.CropType);
-                if (prefab != null)
-                {
-                    SpawnVisual(prefab);
-                    UpdateHarvestIndicator(plot.Plant, null);
-                }
+                // Chỉ update indicator, không spawn visual nữa
+                UpdateHarvestIndicator(plot.Plant, null);
             }
             else if (plot.Animal != null)
             {
-                var pf = _farmView.CowPrefab;
-                if (pf != null)
-                {
-                    SpawnVisual(pf);
-                    UpdateHarvestIndicator(null, plot.Animal);
-                }
+                // Chỉ update indicator, không spawn visual nữa
+                UpdateHarvestIndicator(null, plot.Animal);
             }
             else
             {
                 // nothing on plot
-                if (_visualInstance != null)
-                {
-                    Destroy(_visualInstance);
-                    _visualInstance = null;
-                }
                 if (_indicatorInstance != null)
                 {
                     Destroy(_indicatorInstance);
@@ -91,28 +106,6 @@ namespace FarmGame.UI
             UpdateView();
         }
 
-         public void SpawnVisual(GameObject prefab)
-        {
-            // remove old visual
-            if (_visualInstance != null) Destroy(_visualInstance);
-            if (prefab == null) return;
-
-            // instantiate prefab and preserve its original local scale
-            var inst = Instantiate(prefab);
-            inst.transform.localScale = prefab.transform.localScale;
-
-            // parent to this transform WITHOUT keeping world position so we can set local position precisely
-            inst.transform.SetParent(transform, false);
-
-            // set the required local position on the plot
-            inst.transform.localPosition = new Vector3(0f, 1f, 0f);
-
-            // reset rotation if needed
-            inst.transform.localRotation = Quaternion.identity;
-
-            _visualInstance = inst;
-        }
-
         private void UpdateHarvestIndicator(Plant plant, Animal animal)
         {
             // destroy old indicator
@@ -137,13 +130,42 @@ namespace FarmGame.UI
 
                 if (isReady)
                 {
-                    // sẵn sàng thu hoạch → dùng harvestReadyIndicatorPrefab
-                    indicatorPrefab = _farmView.HarvestReadyIndicatorPrefab;
+                    // Stage 3: Sẵn sàng thu hoạch (100%+) → dùng crop prefab (tomato, blueberry, etc.)
+                    Debug.Log($"[{plant.CropType}] Stage 3: Ready (100%+ in SpoilageTime)");
+                    indicatorPrefab = _farmView.GetCropPrefab(plant.CropType);
                 }
                 else
                 {
-                    // đang lớn → dùng growing indicator theo loại cây
-                    indicatorPrefab = _farmView.GetGrowingIndicatorPrefab(plant.CropType);
+                    // Calculate growth stage based on time
+                    var cropConfig = _controller.Config.GetCropConfig(plant.CropType.ToString());
+                    if (cropConfig != null)
+                    {
+                        float adjustedGrowthTime = cropConfig.GrowthTimeMinutes / (1f + equipmentBonus);
+                        float totalGrowthTime = adjustedGrowthTime * cropConfig.LifespanYields;
+                        float halfGrowthTime = totalGrowthTime / 2f;
+                        
+                        var timeSince = (float)(System.DateTime.Now - plant.LastHarvestTime).TotalMinutes;
+                        
+                        Debug.Log($"[{plant.CropType}] timeSince={timeSince:F2}min, half={halfGrowthTime:F2}min, total={totalGrowthTime:F2}min");
+                        
+                        if (timeSince < halfGrowthTime)
+                        {
+                            // Stage 1: Young/Seedling (0% - 50%)
+                            Debug.Log($"[{plant.CropType}] Stage 1: Young (0-50%)");
+                            indicatorPrefab = _farmView.GetYoungIndicatorPrefab(plant.CropType);
+                        }
+                        else
+                        {
+                            // Stage 2: Growing (50% - 100%)
+                            Debug.Log($"[{plant.CropType}] Stage 2: Growing (50-100%)");
+                            indicatorPrefab = _farmView.GetGrowingIndicatorPrefab(plant.CropType);
+                        }
+                    }
+                    else
+                    {
+                        // Fallback if config not found
+                        indicatorPrefab = _farmView.GetGrowingIndicatorPrefab(plant.CropType);
+                    }
                 }
             }
             else if (animal != null)
@@ -154,24 +176,68 @@ namespace FarmGame.UI
 
                 if (isReady)
                 {
-                    // sẵn sàng thu hoạch → dùng harvestReadyIndicatorPrefab
-                    indicatorPrefab = _farmView.HarvestReadyIndicatorPrefab;
+                    // Stage 3: Sẵn sàng thu hoạch (100%+) → dùng cow prefab
+                    Debug.Log($"[{animal.AnimalType}] Stage 3: Ready (100%+ in SpoilageTime)");
+                    indicatorPrefab = _farmView.CowPrefab;
                 }
                 else
                 {
-                    // đang lớn → dùng growing indicator theo loại động vật
-                    indicatorPrefab = _farmView.GetGrowingIndicatorPrefabForAnimal(animal.AnimalType);
+                    // Calculate growth stage based on time
+                    var animalConfig = _controller.Config.GetAnimalConfig(animal.AnimalType.ToString());
+                    if (animalConfig != null)
+                    {
+                        float adjustedProductionTime = animalConfig.ProductionTimeMinutes / (1f + equipmentBonus);
+                        float totalProductionTime = adjustedProductionTime * animalConfig.LifespanProductions;
+                        float halfProductionTime = totalProductionTime / 2f;
+                        
+                        var timeSince = (float)(System.DateTime.Now - animal.LastProductionTime).TotalMinutes;
+                        
+                        Debug.Log($"[{animal.AnimalType}] timeSince={timeSince:F2}min, half={halfProductionTime:F2}min, total={totalProductionTime:F2}min");
+                        
+                        if (timeSince < halfProductionTime)
+                        {
+                            // Stage 1: Young (0% - 50%)
+                            Debug.Log($"[{animal.AnimalType}] Stage 1: Young (0-50%)");
+                            indicatorPrefab = _farmView.GetYoungIndicatorPrefabForAnimal(animal.AnimalType);
+                        }
+                        else
+                        {
+                            // Stage 2: Growing (50% - 100%)
+                            Debug.Log($"[{animal.AnimalType}] Stage 2: Growing (50-100%)");
+                            indicatorPrefab = _farmView.GetGrowingIndicatorPrefabForAnimal(animal.AnimalType);
+                        }
+                    }
+                    else
+                    {
+                        // Fallback if config not found
+                        indicatorPrefab = _farmView.GetGrowingIndicatorPrefabForAnimal(animal.AnimalType);
+                    }
                 }
             }
 
             if (indicatorPrefab == null) return;
 
-            // spawn indicator bên cạnh visual (offset sang phải)
+            // spawn indicator - tính toán scale để bù trừ parent scale
             var inst = Instantiate(indicatorPrefab);
+            
+            // Lưu lại scale gốc từ prefab
+            Vector3 desiredWorldScale = indicatorPrefab.transform.localScale;
+            
+            // Set parent trước
             inst.transform.SetParent(transform, false);
-            inst.transform.localPosition = new Vector3(0f, 1.5f, 0f); // bên cạnh cây/bò
+            
+            // Tính toán local scale cần thiết để đạt được world scale mong muốn
+            // localScale = desiredWorldScale / parentLossyScale
+            Vector3 parentScale = transform.lossyScale;
+            Vector3 compensatedScale = new Vector3(
+                desiredWorldScale.x / parentScale.x,
+                desiredWorldScale.y / parentScale.y,
+                desiredWorldScale.z / parentScale.z
+            );
+            
+            inst.transform.localScale = compensatedScale;
+            inst.transform.localPosition = new Vector3(0f, 1.5f, 0f);
             inst.transform.localRotation = Quaternion.identity;
-            inst.transform.localScale = indicatorPrefab.transform.localScale;
 
             // nếu indicator có Text component, update số lượng (chỉ khi ready)
             if (isReady)

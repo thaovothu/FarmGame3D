@@ -1,0 +1,8 @@
+Model Information:
+* title:	Low Poly Milk Carton
+* source:	https://sketchfab.com/3d-models/low-poly-milk-carton-cdaac498232949f58cdca25ad9eb6a81
+* author:	Ada_A (https://sketchfab.com/Ada_A)
+
+Model License:
+* license type:	SKETCHFAB Standard (https://sketchfab.com/licenses)
+* requirements:	Under basic restrictions, use worldwide, on all types of media, commercially or not, and in all types of derivative works
