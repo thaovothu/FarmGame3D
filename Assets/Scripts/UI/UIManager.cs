@@ -61,7 +61,10 @@ namespace FarmGame.UI
         [SerializeField] private Sprite blueberrySprite;
         [SerializeField] private Sprite strawberrySprite;
         [SerializeField] private Sprite dairyCowSprite;
-  
+
+        [SerializeField] private Text usedPlotsText;
+        [SerializeField] private Text emptyPlotsText;
+
         private GameController _gameController;
         private float _messageDisplayTime = 0f;
         private const float MESSAGE_DURATION = 3f;
@@ -125,6 +128,7 @@ namespace FarmGame.UI
             UpdateHarvestedDisplay();
             UpdateEquipmentDisplay();
             UpdateWorkersDisplay();
+            UpdatePlotsCountDisplay();
         }
 
         private void UpdateGoldDisplay()
@@ -507,6 +511,25 @@ namespace FarmGame.UI
             ShowMessage($"CONGRATULATIONS! You've reached {_gameController.Config.GoldTarget:N0} gold!");
         }
 
+        private void UpdatePlotsCountDisplay()
+        {
+            if (_gameController == null || _gameController.Farm == null) return;
+            var farm = _gameController.Farm;
+            int usedPlots = farm.Plots.Count - farm.GetEmptyPlotCount();
+            int emptyPlots = farm.GetEmptyPlotCount();
+
+            if (usedPlotsText != null)
+            {
+                usedPlotsText.text = $"{usedPlots}";
+            }
+
+            if (emptyPlotsText != null)
+            {
+                emptyPlotsText.text = $"{emptyPlots}";
+            }
+        }
+
+
         // ========== SEED SELECTION METHODS ==========
         
         /// <summary>
@@ -663,6 +686,30 @@ namespace FarmGame.UI
             {
                 UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(seedButtonContainer.GetComponent<RectTransform>());
             }
+
+            // Handle background click (plotIndex == -1)
+            if (plotIndex == -1)
+            {
+                foreach (Transform child in seedButtonContainer)
+                {
+                    Destroy(child.gameObject);
+                }
+
+                // Hiện nút mua đất mới
+                var btn = Instantiate(seedButtonPrefab, seedButtonContainer);
+                var btnText = btn.GetComponentInChildren<Text>();
+                if (btnText != null)
+                    btnText.text = "Buy New Plot (500g)";
+                btn.onClick.AddListener(() =>
+                {
+                    _gameController.BuyPlot();
+                    HideSeedSelection();
+                });
+
+                seedSelectionPanel.SetActive(true);
+                return;
+            }
+
         }
 
         /// <summary>
