@@ -153,13 +153,13 @@ namespace FarmGame.Domain.Services
             {
                 farm.Inventory.AddHarvest(plot.Plant.CropType, harvested);
                 Debug.Log($"[FarmService] Harvested {harvested} {plot.Plant.CropType}. Harvest count: {plot.Plant.HarvestCount}/{plot.Plant.LifespanYields}");
-            }
-
-            // If plant is dead, clear the plot
-            if (!plot.Plant.IsAlive)
-            {
-                Debug.Log($"[FarmService] Plant {plot.Plant.CropType} reached end of lifespan. Clearing plot {plotId}");
-                plot.Clear();
+                
+                // If plant is dead after harvest, clear the plot immediately
+                if (!plot.Plant.IsAlive)
+                {
+                    Debug.Log($"[FarmService] Plant {plot.Plant.CropType} reached end of lifespan after harvest. Clearing plot {plotId}");
+                    plot.Clear();
+                }
             }
 
             return harvested;
@@ -189,13 +189,13 @@ namespace FarmGame.Domain.Services
             {
                 farm.Inventory.AddMilk(collected);
                 Debug.Log($"[FarmService] Collected {collected} milk from {plot.Animal.AnimalType}. Production count: {plot.Animal.ProductionCount}/{plot.Animal.LifespanProductions}");
-            }
-
-            // If animal is dead, clear the plot
-            if (!plot.Animal.IsAlive)
-            {
-                Debug.Log($"[FarmService] Animal {plot.Animal.AnimalType} reached end of lifespan. Clearing plot {plotId}");
-                plot.Clear();
+                
+                // If animal is dead after collection, clear the plot immediately
+                if (!plot.Animal.IsAlive)
+                {
+                    Debug.Log($"[FarmService] Animal {plot.Animal.AnimalType} reached end of lifespan after collection. Clearing plot {plotId}");
+                    plot.Clear();
+                }
             }
 
             return collected;

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using FarmGame.Domain;
 using FarmGame.Domain.Entities;
 using UnityEngine;
 using FarmGame.UI;
@@ -77,6 +78,12 @@ namespace FarmGame.Infrastructure
                 if (!Directory.Exists(SaveDirectory))
                     Directory.CreateDirectory(SaveDirectory);
 
+                // Sync inventory dictionaries to arrays trước khi serialize
+                if (farm.Inventory != null)
+                {
+                    farm.Inventory.SyncToArrays();
+                }
+
                 var saveData = new SaveData
                 {
                     Farm = farm
@@ -125,7 +132,7 @@ namespace FarmGame.Infrastructure
             }
         }
 
-        public static SaveData Load()
+        public static SaveData Load(GameConfig gameConfig = null)
         {
             if (!File.Exists(SaveFilePath))
                 return null;
@@ -142,6 +149,32 @@ namespace FarmGame.Infrastructure
 
                 // populate runtime DateTime helper
                 saveData.UpdateSaveTimeFromString();
+
+                // Rebuild inventory dictionaries sau khi deserialize
+                if (saveData.Farm != null && saveData.Farm.Inventory != null)
+                {
+                    saveData.Farm.Inventory.RebuildDictionaries();
+                    Debug.Log($"Inventory loaded: Seeds={saveData.Farm.Inventory.SeedEntries?.Length ?? 0} types, Harvested={saveData.Farm.Inventory.HarvestEntries?.Length ?? 0} types");
+                }
+
+                // Re-initialize Plant/Animal config after JsonUtility deserialization (constructor not called)
+                if (gameConfig != null && saveData.Farm?.Plots != null)
+                {
+                    foreach (var plot in saveData.Farm.Plots)
+                    {
+                        if (plot?.Plant != null)
+                        {
+                            plot.Plant.InitializeConfig(gameConfig);
+                        }
+                        if (plot?.Animal != null)
+                        {
+                            plot.Animal.InitializeConfig(gameConfig);
+                        }
+                    }
+                }
+
+                // Validate plants/animals config after load (JsonUtility deserialize may have issues)
+                ValidatePlotsAfterLoad(saveData.Farm);
 
                 // Clean invalid animals after load
                 CleanInvalidAnimalsAfterLoad(saveData.Farm);
@@ -177,6 +210,36 @@ namespace FarmGame.Infrastructure
         public static string GetSaveFilePath()
         {
             return SaveFilePath;
+        }
+
+        public static void ValidatePlotsAfterLoad(Farm farm)
+        {
+            if (farm?.Plots == null) return;
+            
+            foreach (var plot in farm.Plots)
+            {
+                if (plot == null) continue;
+                
+                // Validate Plant config
+                if (plot.Plant != null)
+                {
+                    if (plot.Plant.GrowthTimeMinutes <= 0 || plot.Plant.YieldPerHarvest <= 0 || plot.Plant.LifespanYields <= 0)
+                    {
+                        Debug.LogWarning($"[SaveSystem] Plant {plot.Plant.CropType} on plot {plot.Id} has invalid config (Growth={plot.Plant.GrowthTimeMinutes}, Yield={plot.Plant.YieldPerHarvest}, Lifespan={plot.Plant.LifespanYields}). Clearing plot.");
+                        plot.Clear();
+                    }
+                }
+                
+                // Validate Animal config
+                if (plot.Animal != null)
+                {
+                    if (plot.Animal.ProductionTimeMinutes <= 0 || plot.Animal.YieldPerProduction <= 0 || plot.Animal.LifespanProductions <= 0)
+                    {
+                        Debug.LogWarning($"[SaveSystem] Animal {plot.Animal.AnimalType} on plot {plot.Id} has invalid config (Production={plot.Animal.ProductionTimeMinutes}, Yield={plot.Animal.YieldPerProduction}, Lifespan={plot.Animal.LifespanProductions}). Clearing plot.");
+                        plot.Clear();
+                    }
+                }
+            }
         }
 
         public static void CleanInvalidAnimalsAfterLoad(Farm farm)

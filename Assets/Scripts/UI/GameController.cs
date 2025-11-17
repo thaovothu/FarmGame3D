@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using FarmGame.Domain;
 using FarmGame.Domain.Entities;
 using FarmGame.Domain.Services;
@@ -176,7 +177,7 @@ namespace FarmGame.UI
             {
                 // Lần chơi thứ 2, 3, ... → load từ save file
                 Debug.Log("[GameController] Loading from save file...");
-                var saveData = SaveSystem.Load();
+                var saveData = SaveSystem.Load(_config);
                 
                 Debug.Log($"[GameController] SaveData loaded. IsNull: {saveData == null}, Farm IsNull: {saveData?.Farm == null}");
                 
@@ -453,6 +454,16 @@ private void Update()
             {
                 _uiManager.ShowWinScreen();
             }
+            
+            // Chuyển sang scene Victory (index 2) sau 10 giây khi đạt 1,000,000 gold
+            SaveGame();
+            StartCoroutine(LoadVictorySceneAfterDelay(10f));
+        }
+        
+        private System.Collections.IEnumerator LoadVictorySceneAfterDelay(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            SceneManager.LoadScene(2);
         }
 
         // Public methods for UI to call
@@ -593,12 +604,30 @@ private void Update()
             // Trường hợp 2: Có cây trồng
             if (plot.Status == PlotStatus.HasPlant && plot.Plant != null)
             {
+                if (_farm?.Inventory == null)
+                {
+                    Debug.LogError("GameController.OnPlotClicked: _farm or Inventory is null!");
+                    return;
+                }
+                
                 var equipmentBonus = _farm.Inventory.GetEquipmentBonus();
                 var readyHarvests = plot.Plant.GetReadyHarvestCount(now, equipmentBonus);
                 
                 if (readyHarvests > 0)
                 {
                     // GIAI ĐOẠN 2: Cây đã chín - có thể thu hoạch hoặc xem thời gian còn lại trước khi spoil
+                    
+                    if (_config == null)
+                    {
+                        Debug.LogError("GameController.OnPlotClicked: _config is null!");
+                        return;
+                    }
+                    
+                    if (_farmService == null)
+                    {
+                        Debug.LogError("GameController.OnPlotClicked: _farmService is null!");
+                        return;
+                    }
                     
                     // Check if clicking to harvest or just checking status
                     var timeUntilSpoilage = plot.Plant.GetTimeUntilSpoilage(now, _config.SpoilageTimeMinutes, equipmentBonus);
@@ -654,12 +683,30 @@ private void Update()
             // Trường hợp 3: Có động vật (bò)
             if (plot.Status == PlotStatus.HasAnimal && plot.Animal != null)
             {
+                if (_farm?.Inventory == null)
+                {
+                    Debug.LogError("GameController.OnPlotClicked: _farm or Inventory is null!");
+                    return;
+                }
+                
                 var equipmentBonus = _farm.Inventory.GetEquipmentBonus();
                 var readyProductions = plot.Animal.GetReadyProductionCount(now, equipmentBonus);
                 
                 if (readyProductions > 0)
                 {
                     // GIAI ĐOẠN 2: Sữa đã chín - có thể lấy hoặc xem thời gian còn lại trước khi spoil
+                    
+                    if (_config == null)
+                    {
+                        Debug.LogError("GameController.OnPlotClicked: _config is null!");
+                        return;
+                    }
+                    
+                    if (_farmService == null)
+                    {
+                        Debug.LogError("GameController.OnPlotClicked: _farmService is null!");
+                        return;
+                    }
                     
                     var timeUntilSpoilage = plot.Animal.GetTimeUntilSpoilage(now, _config.SpoilageTimeMinutes, equipmentBonus);
                     

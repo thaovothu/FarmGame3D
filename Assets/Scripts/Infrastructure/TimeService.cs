@@ -107,7 +107,7 @@ namespace FarmGame.Infrastructure
             
             if (!plant.IsAlive) return;
 
-            // Worker tự động thu hoạch trong thời gian offline
+            // TỰ ĐỘNG thu hoạch trong thời gian offline (trang trại hoạt động khi tắt game)
             var readyHarvests = plant.GetReadyHarvestCount(currentTime, equipmentBonus);
             UnityEngine.Debug.Log($"[TimeService] Plant {plant.CropType} - ReadyHarvests: {readyHarvests}, HarvestCount: {plant.HarvestCount}, LifespanYields: {plant.LifespanYields}");
             
@@ -115,12 +115,11 @@ namespace FarmGame.Infrastructure
             {
                 // Tự động thu hoạch tất cả harvest sẵn sàng
                 var harvested = plant.Harvest(currentTime, equipmentBonus);
-                inventory.AddHarvest(plant.CropType, harvested);
-                UnityEngine.Debug.Log($"[TimeService Offline] Worker auto-harvested {harvested} {plant.CropType}(s). Plant IsAlive after harvest: {plant.IsAlive}");
-            }
-            else
-            {
-                UnityEngine.Debug.Log($"[TimeService] Plant {plant.CropType} - NO ready harvests (not complete yet or already harvested)");
+                if (harvested > 0)
+                {
+                    inventory.AddHarvest(plant.CropType, harvested);
+                    UnityEngine.Debug.Log($"[TimeService Offline Auto-Harvest] Collected {harvested} {plant.CropType}(s). Plant IsAlive: {plant.IsAlive}, HarvestCount: {plant.HarvestCount}/{plant.LifespanYields}");
+                }
             }
         }
 
@@ -130,7 +129,7 @@ namespace FarmGame.Infrastructure
             
             if (!animal.IsAlive) return;
 
-            // Worker tự động collect sữa trong thời gian offline
+            // TỰ ĐỘNG collect sữa trong thời gian offline (trang trại hoạt động khi tắt game)
             var readyProductions = animal.GetReadyProductionCount(currentTime, equipmentBonus);
             UnityEngine.Debug.Log($"[TimeService] Animal {animal.AnimalType} - ReadyProductions: {readyProductions}, ProductionCount: {animal.ProductionCount}, LifespanProductions: {animal.LifespanProductions}");
             
@@ -138,12 +137,11 @@ namespace FarmGame.Infrastructure
             {
                 // Tự động collect tất cả production sẵn sàng
                 var collected = animal.Collect(currentTime, equipmentBonus);
-                inventory.AddMilk(collected);
-                UnityEngine.Debug.Log($"[TimeService Offline] Worker auto-collected {collected} milk from {animal.AnimalType}. Animal IsAlive after collect: {animal.IsAlive}");
-            }
-            else
-            {
-                UnityEngine.Debug.Log($"[TimeService] Animal {animal.AnimalType} - NO ready productions (not complete yet or already collected)");
+                if (collected > 0)
+                {
+                    inventory.AddMilk(collected);
+                    UnityEngine.Debug.Log($"[TimeService Offline Auto-Collect] Collected {collected} milk from {animal.AnimalType}. Animal IsAlive: {animal.IsAlive}, ProductionCount: {animal.ProductionCount}/{animal.LifespanProductions}");
+                }
             }
         }
 

@@ -62,8 +62,48 @@ namespace FarmGame.Domain.Entities
         }
 
         /// <summary>
+        /// Re-initialize config from GameConfig after JsonUtility deserialization
+        /// JsonUtility doesn't call constructors, so config fields may be 0
+        /// </summary>
+        public void InitializeConfig(GameConfig gameConfig)
+        {
+            if (gameConfig == null) return;
+            
+            var animalConfig = gameConfig.GetAnimalConfig(AnimalType.ToString());
+            if (animalConfig != null)
+            {
+                ProductionTimeMinutes = animalConfig.ProductionTimeMinutes;
+                YieldPerProduction = animalConfig.YieldPerProduction;
+                LifespanProductions = animalConfig.LifespanProductions;
+                ProductPrice = animalConfig.ProductPrice;
+                UnityEngine.Debug.Log($"[Animal.InitializeConfig] {AnimalType} → ProductionTime={ProductionTimeMinutes}m, Yield={YieldPerProduction}, Lifespan={LifespanProductions}");
+            }
+            else
+            {
+                UnityEngine.Debug.LogError($"[Animal.InitializeConfig] No config found for {AnimalType}!");
+            }
+            
+            // Fix LastProductionTime if it's DateTime.MinValue (Ticks = 0 from JSON)
+            if (LastProductionTimeTicks == 0 || LastProductionTime == DateTime.MinValue)
+            {
+                // Set LastProductionTime to AcquiredTime if not yet collected
+                if (ProductionCount == 0)
+                {
+                    LastProductionTime = AcquiredTime;
+                    UnityEngine.Debug.LogWarning($"[Animal.InitializeConfig] {AnimalType} - Fixed LastProductionTime=DateTime.MinValue → AcquiredTime={AcquiredTime:yyyy-MM-dd HH:mm:ss}");
+                }
+                else
+                {
+                    // If already collected, set to AcquiredTime (best guess)
+                    LastProductionTime = AcquiredTime;
+                    UnityEngine.Debug.LogWarning($"[Animal.InitializeConfig] {AnimalType} - Fixed LastProductionTime=DateTime.MinValue → AcquiredTime={AcquiredTime:yyyy-MM-dd HH:mm:ss} (ProductionCount={ProductionCount})");
+                }
+            }
+        }
+
+        /// <summary>
         /// Calculate how many productions are ready based on current time
-        /// Returns LifespanProductions only when ALL production cycles complete
+        /// Returns number of ready productions that haven't been collected yet
         /// </summary>
         public int GetReadyProductionCount(DateTime currentTime, float equipmentBonus = 0)
         {
@@ -72,109 +112,121 @@ namespace FarmGame.Domain.Entities
                 UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - NOT ALIVE");
                 return 0;
             }
-            if (ProductionCount > 0)
+            if (ProductionCount >= LifespanProductions)
             {
-                UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - Already collected (ProductionCount={ProductionCount})");
-                return 0; // Already collected
+                UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - All collected (ProductionCount={ProductionCount}/{LifespanProductions})");
+                return 0; // All collected
+            }
+
+            var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
+            if (adjustedProductionTime <= 0f)
+            {
+                UnityEngine.Debug.LogWarning($"[Animal.GetReadyProductionCount] {AnimalType} - Invalid ProductionTime: {ProductionTimeMinutes}, equipmentBonus: {equipmentBonus}");
+                return 0;
             }
 
             var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
-            var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
-            if (adjustedProductionTime <= 0f) return 0;
             
-            var totalProductionTime = adjustedProductionTime * LifespanProductions;
+            // Calculate how many production cycles completed
+            var cyclesCompleted = (int)(timeSinceLastProduction / adjustedProductionTime);
             
-            UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - TimeSince={timeSinceLastProduction:F2}min, NeedTotal={totalProductionTime:F2}min, LastProduction={LastProductionTime}, Current={currentTime}");
+            // Ready productions = cycles completed - already collected
+            var readyProductions = Math.Min(cyclesCompleted, LifespanProductions) - ProductionCount;
             
-            // Only ready when ALL productions complete
-            if (timeSinceLastProduction >= totalProductionTime)
-            {
-                UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - READY! Returning {LifespanProductions} productions");
-                return LifespanProductions;
-            }
+            UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - LastProductionTime={LastProductionTime:HH:mm:ss}, CurrentTime={currentTime:HH:mm:ss}, TimeSince={timeSinceLastProduction:F2}min, AdjustedProduction={adjustedProductionTime:F2}min, CyclesCompleted={cyclesCompleted}, ProductionCount={ProductionCount}/{LifespanProductions}, ReadyProductions={readyProductions}");
             
-            UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - NOT READY (need {totalProductionTime - timeSinceLastProduction:F2} more minutes)");
-            return 0;
+            return Math.Max(0, readyProductions);
         }
 
         /// <summary>
-        /// Get time in minutes until ALL productions complete (ready to collect)
+        /// Get time in minutes until next production is ready
         /// </summary>
         public float GetTimeUntilNextProduction(DateTime currentTime, float equipmentBonus = 0)
         {
-            if (!IsAlive) return 0;
-            if (ProductionCount > 0) return 0; // Already collected
+            if (!IsAlive) return 0f;
+            if (ProductionCount >= LifespanProductions) return 0f; // All collected
 
             var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
-            if (adjustedProductionTime <= 0f) return 0;
-            
+            if (adjustedProductionTime <= 0f) return 0f;
+
             var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
-            var totalProductionTime = adjustedProductionTime * LifespanProductions;
             
-            // If all productions complete, return 0
-            if (timeSinceLastProduction >= totalProductionTime)
-                return 0;
+            // Calculate how many production cycles completed
+            var cyclesCompleted = (int)(timeSinceLastProduction / adjustedProductionTime);
+            var readyProductions = Math.Min(cyclesCompleted, LifespanProductions) - ProductionCount;
             
-            // Time remaining until all productions complete
-            var timeRemaining = totalProductionTime - timeSinceLastProduction;
-            return (float)timeRemaining;
+            // If there are ready productions, return 0
+            if (readyProductions > 0)
+                return 0f;
+            
+            // Time remaining until next cycle completes
+            var timeToNextCycle = adjustedProductionTime - (timeSinceLastProduction % adjustedProductionTime);
+            return (float)timeToNextCycle;
         }
 
         /// <summary>
         /// Check if animal has spoiled (uncollected products expired)
-        /// Products spoil if not collected within SpoilageTimeMinutes after ALL productions complete
+        /// Products spoil if not collected within SpoilageTimeMinutes after becoming ready
         /// </summary>
         public bool HasSpoiled(DateTime currentTime, float spoilageTimeMinutes, float equipmentBonus = 0)
         {
             if (!IsAlive) return true;
-            if (ProductionCount > 0) return false; // Already collected, can't spoil
+            if (ProductionCount >= LifespanProductions) return false; // All collected, can't spoil
             
             var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
             if (adjustedProductionTime <= 0f) return false;
             
             var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
-            var totalProductionTime = adjustedProductionTime * LifespanProductions;
             
-            // Check if all productions are complete
-            if (timeSinceLastProduction < totalProductionTime)
-                return false; // Still producing, can't spoil
+            // Calculate how many production cycles completed
+            var cyclesCompleted = (int)(timeSinceLastProduction / adjustedProductionTime);
+            var readyProductions = Math.Min(cyclesCompleted, LifespanProductions) - ProductionCount;
             
-            // Calculate time since all productions completed
-            var timeSinceAllComplete = timeSinceLastProduction - totalProductionTime;
+            // Check if there are ready productions
+            if (readyProductions <= 0)
+                return false; // Nothing ready yet, can't spoil
             
-            // Has spoiled if waited longer than spoilage time after completion
-            return timeSinceAllComplete > spoilageTimeMinutes;
+            // Calculate time since first ready production completed
+            var timeOfFirstReadyProduction = LastProductionTime.AddMinutes((ProductionCount + 1) * adjustedProductionTime);
+            var timeSinceFirstReady = (currentTime - timeOfFirstReadyProduction).TotalMinutes;
+            
+            // Has spoiled if waited longer than spoilage time after first ready production
+            return timeSinceFirstReady > spoilageTimeMinutes;
         }
 
         /// <summary>
         /// Get time remaining in minutes before uncollected products spoil
-        /// Returns -1 if not all productions complete yet or already collected
+        /// Returns -1 if no ready productions yet or already collected all
         /// </summary>
         public float GetTimeUntilSpoilage(DateTime currentTime, float spoilageTimeMinutes, float equipmentBonus = 0)
         {
             if (!IsAlive) return -1;
-            if (ProductionCount > 0) return -1; // Already collected
+            if (ProductionCount >= LifespanProductions) return -1; // All collected
             
             var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
             if (adjustedProductionTime <= 0f) return -1;
             
             var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
-            var totalProductionTime = adjustedProductionTime * LifespanProductions;
+            
+            // Calculate how many production cycles completed
+            var cyclesCompleted = (int)(timeSinceLastProduction / adjustedProductionTime);
+            var readyProductions = Math.Min(cyclesCompleted, LifespanProductions) - ProductionCount;
             
             // Not ready yet
-            if (timeSinceLastProduction < totalProductionTime)
+            if (readyProductions <= 0)
                 return -1;
             
-            // Calculate time since all productions completed
-            var timeSinceAllComplete = timeSinceLastProduction - totalProductionTime;
-            var timeRemaining = spoilageTimeMinutes - timeSinceAllComplete;
+            // Calculate time since first ready production completed
+            var timeOfFirstReadyProduction = LastProductionTime.AddMinutes((ProductionCount + 1) * adjustedProductionTime);
+            var timeSinceFirstReady = (currentTime - timeOfFirstReadyProduction).TotalMinutes;
+            var timeRemaining = spoilageTimeMinutes - timeSinceFirstReady;
             
             return (float)Math.Max(0, timeRemaining);
         }
 
         /// <summary>
         /// Collect production and return the amount collected
-        /// Collects ALL productions at once when complete
+        /// Collects all ready productions at once
         /// </summary>
         public int Collect(DateTime currentTime, float equipmentBonus = 0)
         {
@@ -187,10 +239,13 @@ namespace FarmGame.Domain.Entities
             var productionAmount = readyCount * YieldPerProduction;
             TotalProduction += productionAmount;
 
+            UnityEngine.Debug.Log($"[Animal.Collect] {AnimalType} - Collected {readyCount} productions ({productionAmount} units). ProductionCount now: {ProductionCount}/{LifespanProductions}");
+
             // Animal dies after collecting all productions
             if (ProductionCount >= LifespanProductions)
             {
                 IsAlive = false;
+                UnityEngine.Debug.Log($"[Animal.Collect] {AnimalType} - Animal died (reached lifespan)");
             }
 
             return productionAmount;

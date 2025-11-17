@@ -64,8 +64,48 @@ namespace FarmGame.Domain.Entities
         }
 
         /// <summary>
+        /// Re-initialize config from GameConfig after JsonUtility deserialization
+        /// JsonUtility doesn't call constructors, so config fields may be 0
+        /// </summary>
+        public void InitializeConfig(GameConfig gameConfig)
+        {
+            if (gameConfig == null) return;
+            
+            var cropConfig = gameConfig.GetCropConfig(CropType.ToString());
+            if (cropConfig != null)
+            {
+                GrowthTimeMinutes = cropConfig.GrowthTimeMinutes;
+                YieldPerHarvest = cropConfig.YieldPerHarvest;
+                LifespanYields = cropConfig.LifespanYields;
+                SellPrice = cropConfig.SellPrice;
+                UnityEngine.Debug.Log($"[Plant.InitializeConfig] {CropType} → GrowthTime={GrowthTimeMinutes}m, Yield={YieldPerHarvest}, Lifespan={LifespanYields}");
+            }
+            else
+            {
+                UnityEngine.Debug.LogError($"[Plant.InitializeConfig] No config found for {CropType}!");
+            }
+            
+            // Fix LastHarvestTime if it's DateTime.MinValue (Ticks = 0 from JSON)
+            if (LastHarvestTimeTicks == 0 || LastHarvestTime == DateTime.MinValue)
+            {
+                // Set LastHarvestTime to PlantedTime if not yet harvested
+                if (HarvestCount == 0)
+                {
+                    LastHarvestTime = PlantedTime;
+                    UnityEngine.Debug.LogWarning($"[Plant.InitializeConfig] {CropType} - Fixed LastHarvestTime=DateTime.MinValue → PlantedTime={PlantedTime:yyyy-MM-dd HH:mm:ss}");
+                }
+                else
+                {
+                    // If already harvested, set to PlantedTime (best guess)
+                    LastHarvestTime = PlantedTime;
+                    UnityEngine.Debug.LogWarning($"[Plant.InitializeConfig] {CropType} - Fixed LastHarvestTime=DateTime.MinValue → PlantedTime={PlantedTime:yyyy-MM-dd HH:mm:ss} (HarvestCount={HarvestCount})");
+                }
+            }
+        }
+
+        /// <summary>
         /// Calculate how many harvests are ready based on current time
-        /// Returns LifespanYields only when ALL growth cycles complete
+        /// Returns number of ready harvests that haven't been collected yet
         /// </summary>
         public int GetReadyHarvestCount(DateTime currentTime, float equipmentBonus = 0)
         {
@@ -74,109 +114,121 @@ namespace FarmGame.Domain.Entities
                 UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - NOT ALIVE");
                 return 0;
             }
-            if (HarvestCount > 0)
+            if (HarvestCount >= LifespanYields)
             {
-                UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - Already harvested (HarvestCount={HarvestCount})");
-                return 0; // Already harvested
+                UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - All harvests collected (HarvestCount={HarvestCount}/{LifespanYields})");
+                return 0; // Already harvested all
             }
 
             var adjustedGrowthTime = GrowthTimeMinutes / (1 + equipmentBonus);
-            if (adjustedGrowthTime <= 0f) return 0;
+            if (adjustedGrowthTime <= 0f)
+            {
+                UnityEngine.Debug.LogWarning($"[Plant.GetReadyHarvestCount] {CropType} - Invalid GrowthTime: {GrowthTimeMinutes}, equipmentBonus: {equipmentBonus}");
+                return 0;
+            }
 
             var timeSinceLastHarvest = (currentTime - LastHarvestTime).TotalMinutes;
-            var totalGrowthTime = adjustedGrowthTime * LifespanYields;
             
-            UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - TimeSince={timeSinceLastHarvest:F2}min, NeedTotal={totalGrowthTime:F2}min, LastHarvest={LastHarvestTime}, Current={currentTime}");
+            // Calculate how many growth cycles completed
+            var cyclesCompleted = (int)(timeSinceLastHarvest / adjustedGrowthTime);
             
-            // Only ready when ALL yields complete
-            if (timeSinceLastHarvest >= totalGrowthTime)
-            {
-                UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - READY! Returning {LifespanYields} yields");
-                return LifespanYields;
-            }
+            // Ready harvests = cycles completed - already harvested
+            var readyHarvests = Math.Min(cyclesCompleted, LifespanYields) - HarvestCount;
             
-            UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - NOT READY (need {totalGrowthTime - timeSinceLastHarvest:F2} more minutes)");
-            return 0;
+            UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - LastHarvestTime={LastHarvestTime:HH:mm:ss}, CurrentTime={currentTime:HH:mm:ss}, TimeSince={timeSinceLastHarvest:F2}min, AdjustedGrowth={adjustedGrowthTime:F2}min, CyclesCompleted={cyclesCompleted}, HarvestCount={HarvestCount}/{LifespanYields}, ReadyHarvests={readyHarvests}");
+            
+            return Math.Max(0, readyHarvests);
         }
 
         /// <summary>
-        /// Get time in minutes until ALL harvests complete (ready to harvest)
+        /// Get time in minutes until next harvest is ready
         /// </summary>
         public float GetTimeUntilNextHarvest(DateTime currentTime, float equipmentBonus = 0)
         {
             if (!IsAlive) return 0f;
-            if (HarvestCount > 0) return 0f; // Already harvested
+            if (HarvestCount >= LifespanYields) return 0f; // All harvested
 
             var adjustedGrowthTime = GrowthTimeMinutes / (1 + equipmentBonus);
             if (adjustedGrowthTime <= 0f) return 0f;
 
             var timeSinceLastHarvest = (currentTime - LastHarvestTime).TotalMinutes;
-            var totalGrowthTime = adjustedGrowthTime * LifespanYields;
             
-            // If all yields complete, return 0
-            if (timeSinceLastHarvest >= totalGrowthTime)
+            // Calculate how many growth cycles completed
+            var cyclesCompleted = (int)(timeSinceLastHarvest / adjustedGrowthTime);
+            var readyHarvests = Math.Min(cyclesCompleted, LifespanYields) - HarvestCount;
+            
+            // If there are ready harvests, return 0
+            if (readyHarvests > 0)
                 return 0f;
             
-            // Time remaining until all yields complete
-            var timeRemaining = totalGrowthTime - timeSinceLastHarvest;
-            return (float)timeRemaining;
+            // Time remaining until next cycle completes
+            var timeToNextCycle = adjustedGrowthTime - (timeSinceLastHarvest % adjustedGrowthTime);
+            return (float)timeToNextCycle;
         }
 
         /// <summary>
         /// Check if plant has spoiled (unharvested products expired)
-        /// Products spoil if not harvested within SpoilageTimeMinutes after ALL yields complete
+        /// Products spoil if not harvested within SpoilageTimeMinutes after becoming ready
         /// </summary>
         public bool HasSpoiled(DateTime currentTime, float spoilageTimeMinutes, float equipmentBonus = 0)
         {
             if (!IsAlive) return true;
-            if (HarvestCount > 0) return false; // Already harvested, can't spoil
+            if (HarvestCount >= LifespanYields) return false; // All harvested, can't spoil
             
             var adjustedGrowthTime = GrowthTimeMinutes / (1 + equipmentBonus);
             if (adjustedGrowthTime <= 0f) return false;
             
             var timeSinceLastHarvest = (currentTime - LastHarvestTime).TotalMinutes;
-            var totalGrowthTime = adjustedGrowthTime * LifespanYields;
             
-            // Check if all yields are complete
-            if (timeSinceLastHarvest < totalGrowthTime)
-                return false; // Still growing, can't spoil
+            // Calculate how many growth cycles completed
+            var cyclesCompleted = (int)(timeSinceLastHarvest / adjustedGrowthTime);
+            var readyHarvests = Math.Min(cyclesCompleted, LifespanYields) - HarvestCount;
             
-            // Calculate time since all yields completed
-            var timeSinceAllComplete = timeSinceLastHarvest - totalGrowthTime;
+            // Check if there are ready harvests
+            if (readyHarvests <= 0)
+                return false; // Nothing ready yet, can't spoil
             
-            // Has spoiled if waited longer than spoilage time after completion
-            return timeSinceAllComplete > spoilageTimeMinutes;
+            // Calculate time since first ready harvest completed
+            var timeOfFirstReadyHarvest = LastHarvestTime.AddMinutes((HarvestCount + 1) * adjustedGrowthTime);
+            var timeSinceFirstReady = (currentTime - timeOfFirstReadyHarvest).TotalMinutes;
+            
+            // Has spoiled if waited longer than spoilage time after first ready harvest
+            return timeSinceFirstReady > spoilageTimeMinutes;
         }
 
         /// <summary>
         /// Get time remaining in minutes before unharvested products spoil
-        /// Returns -1 if not all yields complete yet or already harvested
+        /// Returns -1 if no ready harvests yet or already harvested all
         /// </summary>
         public float GetTimeUntilSpoilage(DateTime currentTime, float spoilageTimeMinutes, float equipmentBonus = 0)
         {
             if (!IsAlive) return -1;
-            if (HarvestCount > 0) return -1; // Already harvested
+            if (HarvestCount >= LifespanYields) return -1; // All harvested
             
             var adjustedGrowthTime = GrowthTimeMinutes / (1 + equipmentBonus);
             if (adjustedGrowthTime <= 0f) return -1;
             
             var timeSinceLastHarvest = (currentTime - LastHarvestTime).TotalMinutes;
-            var totalGrowthTime = adjustedGrowthTime * LifespanYields;
+            
+            // Calculate how many growth cycles completed
+            var cyclesCompleted = (int)(timeSinceLastHarvest / adjustedGrowthTime);
+            var readyHarvests = Math.Min(cyclesCompleted, LifespanYields) - HarvestCount;
             
             // Not ready yet
-            if (timeSinceLastHarvest < totalGrowthTime)
+            if (readyHarvests <= 0)
                 return -1;
             
-            // Calculate time since all yields completed
-            var timeSinceAllComplete = timeSinceLastHarvest - totalGrowthTime;
-            var timeRemaining = spoilageTimeMinutes - timeSinceAllComplete;
+            // Calculate time since first ready harvest completed
+            var timeOfFirstReadyHarvest = LastHarvestTime.AddMinutes((HarvestCount + 1) * adjustedGrowthTime);
+            var timeSinceFirstReady = (currentTime - timeOfFirstReadyHarvest).TotalMinutes;
+            var timeRemaining = spoilageTimeMinutes - timeSinceFirstReady;
             
             return (float)Math.Max(0, timeRemaining);
         }
 
         /// <summary>
         /// Perform harvest and return the amount harvested
-        /// Harvests ALL yields at once when complete
+        /// Harvests all ready yields at once
         /// </summary>
         public int Harvest(DateTime currentTime, float equipmentBonus = 0)
         {
@@ -189,10 +241,13 @@ namespace FarmGame.Domain.Entities
             var yieldAmount = readyCount * YieldPerHarvest;
             TotalYield += yieldAmount;
 
+            UnityEngine.Debug.Log($"[Plant.Harvest] {CropType} - Harvested {readyCount} yields ({yieldAmount} units). HarvestCount now: {HarvestCount}/{LifespanYields}");
+
             // Plant dies after harvesting all yields
             if (HarvestCount >= LifespanYields)
             {
                 IsAlive = false;
+                UnityEngine.Debug.Log($"[Plant.Harvest] {CropType} - Plant died (reached lifespan)");
             }
 
             return yieldAmount;
