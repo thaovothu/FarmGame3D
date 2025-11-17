@@ -61,6 +61,7 @@ namespace FarmGame.UI
         [SerializeField] private Sprite blueberrySprite;
         [SerializeField] private Sprite strawberrySprite;
         [SerializeField] private Sprite dairyCowSprite;
+        [SerializeField] private Sprite plotSprite; // Icon cho plot/đất
 
         [SerializeField] private Text usedPlotsText;
         [SerializeField] private Text emptyPlotsText;
@@ -69,6 +70,7 @@ namespace FarmGame.UI
         private float _messageDisplayTime = 0f;
         private const float MESSAGE_DURATION = 3f;
         private int _selectedPlotIndex = -1;
+        private Vector3 _clickPosition = Vector3.zero;
 
         public void Initialize(GameController gameController)
         {
@@ -216,8 +218,10 @@ namespace FarmGame.UI
             if (workerCountText != null)
             {
                 var idle = farm.GetIdleWorkerCount();
+                var working = farm.GetWorkingWorkerCount();
                 var total = farm.Workers.Count;
-                workerCountText.text = $"{idle}/{total}";
+                // Hiển thị: "Working: 2 | Idle: 1 (Total: 3)"
+                workerCountText.text = $"W:{working} | I:{idle} ({total})";
             }
         }
 
@@ -533,6 +537,15 @@ namespace FarmGame.UI
         // ========== SEED SELECTION METHODS ==========
         
         /// <summary>
+        /// Hiển thị panel chọn plot khi click vào background với vị trí
+        /// </summary>
+        public void ShowSeedSelection(int plotIndex, Vector3 clickPosition)
+        {
+            _clickPosition = clickPosition;
+            ShowSeedSelection(plotIndex);
+        }
+        
+        /// <summary>
         /// Hiển thị panel chọn hạt giống khi click vào mảnh đất trống
         /// </summary>
         public void ShowSeedSelection(int plotIndex)
@@ -695,16 +708,79 @@ namespace FarmGame.UI
                     Destroy(child.gameObject);
                 }
 
-                // Hiện nút mua đất mới
-                var btn = Instantiate(seedButtonPrefab, seedButtonContainer);
-                var btnText = btn.GetComponentInChildren<Text>();
-                if (btnText != null)
-                    btnText.text = "Buy New Plot (500g)";
-                btn.onClick.AddListener(() =>
+                var farm = _gameController.Farm;
+                var farm3DView = FindObjectOfType<Farm3DView>();
+                int unplacedCount = 0;
+                int displayNumber = 1; // Số thứ tự hiển thị (1, 2, 3...)
+                bool hasUnplacedPlots = false;
+                int initialPlotCount = farm3DView?.GetInitialPlotCount() ?? 0;
+
+                // Hiển thị danh sách plot vừa mới mua chưa được đặt vị trí
+                for (int i = 0; i < farm.Plots.Count; i++)
                 {
-                    _gameController.BuyPlot();
-                    HideSeedSelection();
-                });
+                    // Chỉ hiển thị plot MỚI MUA (index >= initialPlotCount) và chưa được đặt vị trí
+                    if (i >= initialPlotCount && farm3DView != null && !farm3DView.IsPlotPlaced(i))
+                    {
+                        var plot = farm.Plots[i];
+                        if (plot.Status == PlotStatus.Empty)
+                        {
+                            hasUnplacedPlots = true;
+                            unplacedCount++;
+                            int capturedIndex = i;
+                            int capturedDisplayNumber = displayNumber; // Lưu số thứ tự để hiển thị
+                            
+                            var btn = Instantiate(seedButtonPrefab, seedButtonContainer);
+                            
+                            // Set icon cho plot
+                            var btnImage = btn.transform.Find("Icon")?.GetComponent<Image>();
+                            if (btnImage == null)
+                            {
+                                btnImage = btn.GetComponentInChildren<Image>();
+                            }
+                            
+                            if (btnImage != null && plotSprite != null)
+                            {
+                                btnImage.sprite = plotSprite;
+                                Debug.Log($"Set sprite for New Plot #{capturedDisplayNumber}");
+                            }
+                            
+                            var btnText = btn.GetComponentInChildren<Text>();
+                            if (btnText != null)
+                                btnText.text = $"{capturedDisplayNumber}"; // Hiển thị 1, 2, 3... thay vì index thực
+                                
+                            btn.onClick.AddListener(() =>
+                            {
+                                _gameController.PlacePlotAtPosition(capturedIndex, _clickPosition);
+                                ShowMessage($"New plot #{capturedDisplayNumber} placed!");
+                                HideSeedSelection();
+                            });
+                            
+                            displayNumber++; // Tăng số thứ tự cho plot tiếp theo
+                        }
+                    }
+                }
+
+                // Hiển thị thông báo số lượng plot chưa đặt
+                if (hasUnplacedPlots)
+                {
+                    ShowMessage($"You have {unplacedCount} new plot(s) to place. Click to position them.");
+                }
+                else
+                {
+                    // Nếu không có plot mới chưa đặt, hiện nút mua đất mới
+                    var btn = Instantiate(seedButtonPrefab, seedButtonContainer);
+                    var btnText = btn.GetComponentInChildren<Text>();
+                    if (btnText != null)
+                        btnText.text = "Buy New Plot (500g)";
+                    btn.onClick.AddListener(() =>
+                    {
+                        if (_gameController.BuyPlot())
+                        {
+                            ShowMessage("New plot purchased! Click background to place it.");
+                        }
+                        HideSeedSelection();
+                    });
+                }
 
                 seedSelectionPanel.SetActive(true);
                 return;

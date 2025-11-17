@@ -37,17 +37,24 @@ namespace FarmGame.UI
 
         private void Awake()
         {
+            Debug.Log("========== [GameController.Awake] START ==========");
+            
             // Load configuration
+            Debug.Log("[GameController.Awake] Loading configuration...");
             LoadConfiguration();
 
             // Initialize services
+            Debug.Log("[GameController.Awake] Initializing services...");
             _farmService = new FarmService(_config);
             _shopService = new ShopService(_config);
             _workerService = new WorkerService(_config, _farmService);
             _timeService = new TimeService(_config);
+            Debug.Log($"[GameController.Awake] Services initialized. _timeService IsNull: {_timeService == null}");
 
             // Load or create new farm
+            Debug.Log("[GameController.Awake] About to load or create farm...");
             LoadOrCreateFarm();
+            Debug.Log("[GameController.Awake] Farm loaded/created!");
 
             // Get UI Manager
             _uiManager = FindObjectOfType<UIManager>();
@@ -56,7 +63,15 @@ namespace FarmGame.UI
                 _uiManager.Initialize(this);
             }
 
+            // Render plots và update UI sau khi load xong
+            Debug.Log("[GameController.Awake] Rendering plots and updating UI...");
             FindObjectOfType<Farm3DView>()?.RenderPlots();
+            if (_uiManager != null)
+            {
+                _uiManager.UpdateDisplay();
+            }
+            
+            Debug.Log("========== [GameController.Awake] COMPLETE ==========");
         }
 
         private void LoadConfiguration()
@@ -155,27 +170,49 @@ namespace FarmGame.UI
 
         private void LoadOrCreateFarm()
         {
+            Debug.Log($"[GameController] LoadOrCreateFarm - HasSaveFile: {SaveSystem.HasSaveFile()}");
+            
             if (SaveSystem.HasSaveFile())
             {
                 // Lần chơi thứ 2, 3, ... → load từ save file
+                Debug.Log("[GameController] Loading from save file...");
                 var saveData = SaveSystem.Load();
+                
+                Debug.Log($"[GameController] SaveData loaded. IsNull: {saveData == null}, Farm IsNull: {saveData?.Farm == null}");
+                
                 if (saveData != null && saveData.Farm != null)
                 {
                     _farm = saveData.Farm;
                         // Remove any invalid plants that may have been saved by accident.
                         RemoveInvalidPlants(_farm);
                     
+                    // Load vị trí của các plot
+                    var farm3DView = FindObjectOfType<Farm3DView>();
+                    if (farm3DView != null && saveData.PlotPositions != null)
+                    {
+                        farm3DView.LoadPlotPositions(saveData.PlotPositions);
+                    }
+                    
                     // Process offline progress
+                    Debug.Log($"[GameController] About to process offline progress. _timeService IsNull: {_timeService == null}");
+                    
                     if (_timeService != null)
                     {
                         try
                         {
+                            var offlineMinutes = (float)(DateTime.Now - saveData.SaveTime).TotalMinutes;
+                            Debug.Log($"[GameController] Processing offline time: {offlineMinutes:F2} minutes (from {saveData.SaveTime} to {DateTime.Now})");
                             _timeService.ProcessOfflineProgress(_farm, DateTime.Now);
+                            Debug.Log($"[GameController] ProcessOfflineProgress completed!");
                         }
                         catch (Exception ex)
                         {
-                            Debug.LogWarning($"Failed to process offline progress: {ex.Message}");
+                            Debug.LogError($"[GameController] Failed to process offline progress: {ex.Message}\nStackTrace: {ex.StackTrace}");
                         }
+                    }
+                    else
+                    {
+                        Debug.LogError("[GameController] _timeService is NULL! Cannot process offline progress!");
                     }
                     
                     Debug.Log($"Farm loaded from save. Offline time processed from {saveData.SaveTime} to {DateTime.Now}");
@@ -189,6 +226,7 @@ namespace FarmGame.UI
             else
             {
                 // Lần chơi đầu tiên → tạo farm mới từ config
+                Debug.Log("[GameController] No save file found, creating new farm");
                 CreateNewFarm();
             }
         }
@@ -262,8 +300,15 @@ private void Update()
         {
             try
             {
-                _workerService.ProcessWorkerTasks(_farm, currentTime);
+                _workerService.ProcessWorkerTasks(_farm, currentTime, out bool needsUIRefresh);
                 _workerService.AutoQueueHarvestTasks(_farm, currentTime);
+                
+                // Cập nhật UI và render plots khi worker hoàn thành task
+                if (needsUIRefresh)
+                {
+                    FindObjectOfType<Farm3DView>()?.RenderPlots();
+                    _uiManager?.UpdateDisplay();
+                }
             }
             catch (Exception ex)
             {
@@ -359,7 +404,10 @@ private void Update()
             {
                 // Clean up any invalid/placeholder plants before persisting.
                 RemoveInvalidPlants(_farm);
-                SaveSystem.Save(_farm);
+                
+                // Lưu vị trí của các plot
+                var farm3DView = FindObjectOfType<Farm3DView>();
+                SaveSystem.Save(_farm, farm3DView);
                 Debug.Log("Game saved");
             }
         }
@@ -476,7 +524,14 @@ private void Update()
 
         public bool BuyPlot()
         {
-            return _farmService.BuyPlot(_farm);
+            bool success = _farmService.BuyPlot(_farm);
+            if (success)
+            {
+                var farm3DView = FindObjectOfType<Farm3DView>();
+                int unplacedCount = farm3DView?.GetUnplacedPlotCount() ?? 0;
+                _uiManager?.ShowMessage($"New plot purchased! You have {unplacedCount} plot(s) to place. Click background to position.");
+            }
+            return success;
         }
 
         public bool HireWorker()
@@ -709,6 +764,29 @@ private void Update()
             else
             {
                 _uiManager?.ShowMessage("Không thể đặt (không có động vật hoặc đất đã bị chiếm)!");
+            }
+        }
+
+        /// <summary>
+        /// Đặt plot vào vị trí đã chọn (được gọi khi click background)
+        /// </summary>
+        public void PlacePlotAtPosition(int plotIndex, Vector3 worldPosition)
+        {
+            if (_farm == null) return;
+            if (plotIndex < 0 || plotIndex >= _farm.Plots.Count)
+            {
+                _uiManager?.ShowMessage("Mảnh đất không hợp lệ!");
+                return;
+            }
+
+            var farm3DView = FindObjectOfType<Farm3DView>();
+            if (farm3DView != null)
+            {
+                farm3DView.SetPlotPosition(plotIndex, worldPosition);
+                farm3DView.RenderPlots();
+                SaveGame();
+                _uiManager?.UpdateDisplay();
+                Debug.Log($"Plot {plotIndex} placed at position {worldPosition}");
             }
         }
     }

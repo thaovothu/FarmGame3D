@@ -35,14 +35,20 @@ namespace FarmGame.Domain.Services
         /// <summary>
         /// Process all worker tasks
         /// </summary>
-        public void ProcessWorkerTasks(Farm farm, DateTime currentTime)
+        public void ProcessWorkerTasks(Farm farm, DateTime currentTime, out bool needsUIRefresh)
         {
+            needsUIRefresh = false;
+            
             // Complete finished tasks
             foreach (var worker in farm.Workers)
             {
                 if (worker.Status == WorkerStatus.Working && worker.IsTaskComplete(currentTime))
                 {
-                    CompleteWorkerTask(farm, worker, currentTime);
+                    CompleteWorkerTask(farm, worker, currentTime, out bool taskCompleted);
+                    if (taskCompleted)
+                    {
+                        needsUIRefresh = true;
+                    }
                 }
             }
 
@@ -50,8 +56,10 @@ namespace FarmGame.Domain.Services
             AssignTasksToIdleWorkers(farm, currentTime);
         }
 
-        private void CompleteWorkerTask(Farm farm, Worker worker, DateTime currentTime)
+        private void CompleteWorkerTask(Farm farm, Worker worker, DateTime currentTime, out bool taskCompleted)
         {
+            taskCompleted = false;
+            
             var task = farm.TaskQueue.Find(t => t.Id == worker.CurrentTaskId);
             if (task == null)
             {
@@ -67,17 +75,20 @@ namespace FarmGame.Domain.Services
                     if (task.CropType.HasValue)
                     {
                         success = _farmService.PlantCrop(farm, task.PlotId, task.CropType.Value, currentTime);
+                        if (success) taskCompleted = true;
                     }
                     break;
 
                 case TaskType.HarvestCrop:
                     var harvested = _farmService.HarvestCrop(farm, task.PlotId, currentTime);
                     success = harvested > 0;
+                    if (success) taskCompleted = true;
                     break;
 
                 case TaskType.CollectMilk:
                     var collected = _farmService.CollectMilk(farm, task.PlotId, currentTime);
                     success = collected > 0;
+                    if (success) taskCompleted = true;
                     break;
             }
 

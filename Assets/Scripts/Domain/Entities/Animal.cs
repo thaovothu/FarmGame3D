@@ -63,23 +63,37 @@ namespace FarmGame.Domain.Entities
 
         /// <summary>
         /// Calculate how many productions are ready based on current time
-        /// Only returns productions when ALL lifespan productions are complete (can only collect once at end)
+        /// Returns LifespanProductions only when ALL production cycles complete
         /// </summary>
         public int GetReadyProductionCount(DateTime currentTime, float equipmentBonus = 0)
         {
-            if (!IsAlive) return 0;
-            if (ProductionCount > 0) return 0; // Already collected
+            if (!IsAlive)
+            {
+                UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - NOT ALIVE");
+                return 0;
+            }
+            if (ProductionCount > 0)
+            {
+                UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - Already collected (ProductionCount={ProductionCount})");
+                return 0; // Already collected
+            }
 
             var timeSinceLastProduction = (currentTime - LastProductionTime).TotalMinutes;
             var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
+            if (adjustedProductionTime <= 0f) return 0;
+            
             var totalProductionTime = adjustedProductionTime * LifespanProductions;
             
-            // Only ready when ALL productions are complete
+            UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - TimeSince={timeSinceLastProduction:F2}min, NeedTotal={totalProductionTime:F2}min, LastProduction={LastProductionTime}, Current={currentTime}");
+            
+            // Only ready when ALL productions complete
             if (timeSinceLastProduction >= totalProductionTime)
             {
-                return LifespanProductions; // Return all productions at once
+                UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - READY! Returning {LifespanProductions} productions");
+                return LifespanProductions;
             }
             
+            UnityEngine.Debug.Log($"[Animal.GetReadyProductionCount] {AnimalType} - NOT READY (need {totalProductionTime - timeSinceLastProduction:F2} more minutes)");
             return 0;
         }
 
@@ -160,6 +174,7 @@ namespace FarmGame.Domain.Entities
 
         /// <summary>
         /// Collect production and return the amount collected
+        /// Collects ALL productions at once when complete
         /// </summary>
         public int Collect(DateTime currentTime, float equipmentBonus = 0)
         {
@@ -167,13 +182,12 @@ namespace FarmGame.Domain.Entities
             if (readyCount <= 0) return 0;
 
             ProductionCount += readyCount;
-            var adjustedProductionTime = ProductionTimeMinutes / (1 + equipmentBonus);
-            LastProductionTime = LastProductionTime.AddMinutes(readyCount * adjustedProductionTime);
+            LastProductionTime = currentTime;
             
             var productionAmount = readyCount * YieldPerProduction;
             TotalProduction += productionAmount;
 
-            // Check if animal is dead after this production
+            // Animal dies after collecting all productions
             if (ProductionCount >= LifespanProductions)
             {
                 IsAlive = false;

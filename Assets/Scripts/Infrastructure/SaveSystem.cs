@@ -2,15 +2,28 @@ using System;
 using System.IO;
 using FarmGame.Domain.Entities;
 using UnityEngine;
+using FarmGame.UI;
 
 namespace FarmGame.Infrastructure
 {
+    [Serializable]
+    public class PlotPositionData
+    {
+        public int plotIndex;
+        public float x;
+        public float y;
+        public float z;
+    }
+
     [Serializable]
     public class SaveData
     {
         // Note: JsonUtility serializes fields (not properties). Ensure Farm and its members
         // are [Serializable] and expose fields (public or [SerializeField]) so they are saved.
         public Farm Farm;
+
+        // Lưu vị trí của các plot
+        public PlotPositionData[] PlotPositions;
 
         // ISO 8601 string for save time (serialized)
         public string SaveTimeString;
@@ -51,7 +64,7 @@ namespace FarmGame.Infrastructure
         private static readonly string SaveDirectory = Path.Combine(Application.persistentDataPath, "Saves");
         private static readonly string SaveFilePath = Path.Combine(SaveDirectory, "savegame.json");
 
-        public static void Save(Farm farm)
+        public static void Save(Farm farm, Farm3DView farm3DView = null)
         {
             if (farm == null)
             {
@@ -69,6 +82,19 @@ namespace FarmGame.Infrastructure
                     Farm = farm
                 };
                 saveData.SetSaveTimeNow();
+                
+                // Lưu vị trí của các plot nếu có Farm3DView
+                if (farm3DView != null)
+                {
+                    try
+                    {
+                        saveData.PlotPositions = farm3DView.GetPlotPositionsForSave();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"Could not get plot positions from Farm3DView: {ex.Message}");
+                    }
+                }
 
                 // Update farm's last save time if property exists
                 try

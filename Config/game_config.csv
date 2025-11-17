@@ -16,7 +16,7 @@ DairyCow,0.1,1,1,15,100
 # Worker Configuration
 [Workers]
 ActionTimeMinutes,HireCost
-2,500
+0.1,500
 
 # Farm Equipment Configuration
 [Equipment]
@@ -31,7 +31,7 @@ BuyPlotCost
 # Initial Resources
 [InitialResources]
 Gold,Plots,TomatoSeeds,BlueberrySeeds,StrawberrySeeds,DairyCows,Workers,EquipmentLevel
-500,3,1,1,1,1,1,1
+1000,3,1,1,1,1,1,1
 
 # Shop Configuration
 [Shop]
@@ -48,4 +48,4 @@ GoldTarget
 [Spoilage]
 # Time in minutes after final harvest before crop/animal dies
 SpoilageTimeMinutes
-0.1
+0.2

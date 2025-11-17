@@ -65,12 +65,20 @@ namespace FarmGame.Domain.Entities
 
         /// <summary>
         /// Calculate how many harvests are ready based on current time
-        /// Only returns yields when ALL lifespan yields are complete (can only harvest once at end)
+        /// Returns LifespanYields only when ALL growth cycles complete
         /// </summary>
         public int GetReadyHarvestCount(DateTime currentTime, float equipmentBonus = 0)
         {
-            if (!IsAlive) return 0;
-            if (HarvestCount > 0) return 0; // Already harvested
+            if (!IsAlive)
+            {
+                UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - NOT ALIVE");
+                return 0;
+            }
+            if (HarvestCount > 0)
+            {
+                UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - Already harvested (HarvestCount={HarvestCount})");
+                return 0; // Already harvested
+            }
 
             var adjustedGrowthTime = GrowthTimeMinutes / (1 + equipmentBonus);
             if (adjustedGrowthTime <= 0f) return 0;
@@ -78,17 +86,21 @@ namespace FarmGame.Domain.Entities
             var timeSinceLastHarvest = (currentTime - LastHarvestTime).TotalMinutes;
             var totalGrowthTime = adjustedGrowthTime * LifespanYields;
             
-            // Only ready when ALL yields have grown
+            UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - TimeSince={timeSinceLastHarvest:F2}min, NeedTotal={totalGrowthTime:F2}min, LastHarvest={LastHarvestTime}, Current={currentTime}");
+            
+            // Only ready when ALL yields complete
             if (timeSinceLastHarvest >= totalGrowthTime)
             {
-                return LifespanYields; // Return all yields at once
+                UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - READY! Returning {LifespanYields} yields");
+                return LifespanYields;
             }
             
+            UnityEngine.Debug.Log($"[Plant.GetReadyHarvestCount] {CropType} - NOT READY (need {totalGrowthTime - timeSinceLastHarvest:F2} more minutes)");
             return 0;
         }
 
         /// <summary>
-        /// Get time in minutes until ALL yields complete (ready to harvest)
+        /// Get time in minutes until ALL harvests complete (ready to harvest)
         /// </summary>
         public float GetTimeUntilNextHarvest(DateTime currentTime, float equipmentBonus = 0)
         {
@@ -164,23 +176,20 @@ namespace FarmGame.Domain.Entities
 
         /// <summary>
         /// Perform harvest and return the amount harvested
+        /// Harvests ALL yields at once when complete
         /// </summary>
         public int Harvest(DateTime currentTime, float equipmentBonus = 0)
         {
-            var adjustedGrowthTime = GrowthTimeMinutes / (1 + equipmentBonus);
-            if (adjustedGrowthTime <= 0f) return 0;
-
             var readyCount = GetReadyHarvestCount(currentTime, equipmentBonus);
             if (readyCount <= 0) return 0;
 
             HarvestCount += readyCount;
-            // set LastHarvestTime to now (safer than adding minutes to avoid drift)
             LastHarvestTime = currentTime;
-
+            
             var yieldAmount = readyCount * YieldPerHarvest;
             TotalYield += yieldAmount;
 
-            // Check if plant is dead after this harvest
+            // Plant dies after harvesting all yields
             if (HarvestCount >= LifespanYields)
             {
                 IsAlive = false;
