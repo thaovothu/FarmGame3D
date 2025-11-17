@@ -1,6 +1,6 @@
 using NUnit.Framework;
 using System;
-using FarmGame.Domain.Entities;
+using FarmGame.Domain.Entities; 
 
 namespace FarmGame.Tests.Domain
 {

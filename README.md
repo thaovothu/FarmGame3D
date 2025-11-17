@@ -9,7 +9,7 @@ A farm simulation game built with **Unity C#** demonstrating **Clean Architectur
 ## 🎮 Quick Start
 
 1. Open the project in **Unity Hub** (Unity 2021.3+).
-2. Load the scene: `Assets/Scenes/SampleScene.unity`.
+2. Load the scene: `Assets/Scenes/Menu.unity`.
 3. Press **Play** ▶️
 4. Use the console commands to interact with the farm.
 
@@ -20,8 +20,7 @@ A farm simulation game built with **Unity C#** demonstrating **Clean Architectur
 - 10 tomato seeds  
 - 10 blueberry seeds  
 - 2 dairy cows  
-- 1 worker  
-- 100 gold  
+- 1 worker    
 - Level 1 equipment
 
 ---
@@ -33,7 +32,7 @@ A farm simulation game built with **Unity C#** demonstrating **Clean Architectur
 |------|--------------|-----------|-------------|------------|
 | 🍅 Tomato | 10 min | 40 harvests | 5 gold | 30 gold |
 | 🫐 Blueberry | 15 min | 40 harvests | 8 gold | 50 gold |
-| 🍓 Strawberry | 5 min | 20 harvests | 3 gold | 40 gold (bulk) |
+| 🍓 Strawberry | 5 min | 20 harvests | 8 gold | 40 gold (bulk) |
 
 ### 🐄 Animals
 | Animal | Production Time | Lifespan | Product Price | Buy Cost |
@@ -53,7 +52,7 @@ This project follows **Clean Architecture** with clear separation of concerns:
 
 | Layer | Description |
 |-------|--------------|
-| **Domain** | Core game logic (Entities, Services, Repositories) – pure C#, no Unity dependencies |
+| **Domain** | Core game logic (Entities, Services) – pure C#, no Unity dependencies |
 | **Services** | Business operations (FarmService, ShopService, WorkerService) |
 | **Infrastructure** | Handles saving/loading, CSV parsing, time management |
 | **UI** | Unity MonoBehaviour scripts (GameController, UIManager, ConsoleUI) |
@@ -71,16 +70,17 @@ This project follows **Clean Architecture** with clear separation of concerns:
 
 ## 🧪 Testing
 
-Use **Unity Test Runner**:  
-**Window → General → Test Runner → Run All**
+### Unity Test Runner (Recommended)
+1. Open Unity Editor
+2. Go to **Window → General → Test Runner**
+3. Click **Run All**
 
-Covers:
+### Test Coverage:
 - Plant growth and harvest  
 - Animal production  
 - Inventory management  
 - Farm services and offline progress  
 
-✅ All tests run without Unity dependencies.
+✅ All tests run without Unity dependencies and can be executed in any C# test runner.
 
 ---
-\

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="1" result="Passed" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.0193405">
+  <test-suite type="TestSuite" id="1042" name="FarmGame" fullname="FarmGame" runstate="Runnable" testcasecount="29" result="Passed" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.019341" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1033" name="DomainTests.dll" fullname="/Users/vothithao/ERP/unity/FarmGame3D/Library/ScriptAssemblies/DomainTests.dll" runstate="Runnable" testcasecount="29" result="Passed" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.015451" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="15657" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1034" name="FarmGame" fullname="FarmGame" runstate="Runnable" testcasecount="29" result="Passed" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.013985" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1035" name="Tests" fullname="FarmGame.Tests" runstate="Runnable" testcasecount="29" result="Passed" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.013419" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1036" name="Domain" fullname="FarmGame.Tests.Domain" runstate="Runnable" testcasecount="29" result="Passed" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.012820" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1021" name="PlantTests" fullname="FarmGame.Tests.Domain.PlantTests" classname="FarmGame.Tests.Domain.PlantTests" runstate="Runnable" testcasecount="11" result="Passed" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.012089" total="1" passed="1" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1026" name="Plant_WithEquipmentBonus_GrowsFaster" fullname="FarmGame.Tests.Domain.PlantTests.Plant_WithEquipmentBonus_GrowsFaster" methodname="Plant_WithEquipmentBonus_GrowsFaster" classname="FarmGame.Tests.Domain.PlantTests" runstate="Runnable" seed="372606884" result="Passed" start-time="2025-11-17 12:39:32Z" end-time="2025-11-17 12:39:32Z" duration="0.007256" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[[Plant.GetReadyHarvestCount] Tomato - LastHarvestTime=19:28:32, CurrentTime=19:39:32, TimeSince=11.00min, AdjustedGrowth=0.91min, CyclesCompleted=12, HarvestCount=0/40, ReadyHarvests=12
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

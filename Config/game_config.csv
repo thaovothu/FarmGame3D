@@ -4,19 +4,19 @@
 # Crop Configuration
 [Crops]
 Type,GrowthTimeMinutes,YieldPerHarvest,LifespanYields,SellPrice,SeedPrice
-Tomato,0.1,1,3,1,30
-Blueberry,0.1,1,1,1000000,50
-Strawberry,0.1,1,1,10,40
+Tomato,10,1,40,5,30
+Blueberry,15,1,40,8,50
+Strawberry,5,1,20,8,40
 
 # Animal Configuration
 [Animals]
 Type,ProductionTimeMinutes,YieldPerProduction,LifespanProductions,ProductPrice,AnimalPrice
-DairyCow,0.1,1,1,15,100
+DairyCow,30,1,100,15,100
 
 # Worker Configuration
 [Workers]
 ActionTimeMinutes,HireCost
-0.1,500
+2,500
 
 # Farm Equipment Configuration
 [Equipment]
@@ -31,7 +31,7 @@ BuyPlotCost
 # Initial Resources
 [InitialResources]
 Gold,Plots,TomatoSeeds,BlueberrySeeds,StrawberrySeeds,DairyCows,Workers,EquipmentLevel
-100,3,1,1,1,1,1,1
+0,3,10,10,0,2,1,1
 
 # Shop Configuration
 [Shop]
@@ -48,4 +48,4 @@ GoldTarget
 [Spoilage]
 # Time in minutes after final harvest before crop/animal dies
 SpoilageTimeMinutes
-0.2
+60

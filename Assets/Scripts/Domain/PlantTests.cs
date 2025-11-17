@@ -77,11 +77,11 @@ namespace FarmGame.Tests.Domain
             var currentTime = DateTime.Now;
             var plant = new Plant(CropType.Tomato, plantTime, 1f, 1, 40, 5);
 
-            // Act - With 10% bonus, 10 minutes becomes 9.09 minutes
+            // Act - With 10% bonus, 1 minute becomes ~0.91 minutes
             var readyCount = plant.GetReadyHarvestCount(currentTime, 0.1f);
 
             // Assert
-            Assert.AreEqual(1, readyCount); // 11 minutes / 9.09 minutes = 1 harvest ready
+            Assert.AreEqual(12, readyCount); // 11 minutes / 0.91 minutes ≈ 12 harvests
         }
 
         [Test]
