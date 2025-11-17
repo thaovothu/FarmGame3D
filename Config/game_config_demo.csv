@@ -1,0 +1,51 @@
+# Farm Game Configuration
+# This file contains all game parameters that can be adjusted by Game Designers
+
+# Crop Configuration
+[Crops]
+Type,GrowthTimeMinutes,YieldPerHarvest,LifespanYields,SellPrice,SeedPrice
+Tomato,0.1,1,2,300000,30
+Blueberry,0.1,1,2,300000,50
+Strawberry,0.1,1,2,8,40
+
+# Animal Configuration
+[Animals]
+Type,ProductionTimeMinutes,YieldPerProduction,LifespanProductions,ProductPrice,AnimalPrice
+DairyCow,0.1,1,2,15,100
+
+# Worker Configuration
+[Workers]
+ActionTimeMinutes,HireCost
+0.05,500
+
+# Farm Equipment Configuration
+[Equipment]
+UpgradeCost,YieldBonusPercent
+500,10
+
+# Plot Configuration
+[Plots]
+BuyPlotCost
+500
+
+# Initial Resources
+[InitialResources]
+Gold,Plots,TomatoSeeds,BlueberrySeeds,StrawberrySeeds,DairyCows,Workers,EquipmentLevel
+500,3,10,10,0,2,1,1
+
+# Shop Configuration
+[Shop]
+# Strawberry is sold in bulk only (10 seeds minimum)
+StrawberryBulkSize,StrawberryBulkPrice
+10,400
+
+# Win Condition
+[WinCondition]
+GoldTarget
+1000000
+
+# Spoilage Configuration
+[Spoilage]
+# Time in minutes after final harvest before crop/animal dies
+SpoilageTimeMinutes
+0.1

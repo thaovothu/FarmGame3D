@@ -12,7 +12,7 @@ namespace FarmGame.UI
     public class GameController : MonoBehaviour
     {
         [Header("Config")]
-        [SerializeField] private string configFilePath = "Config/game_config.csv";
+        [SerializeField] private string configFilePath = "Config/game_config_demo.csv";
 
         // Domain objects
         private GameConfig _config;

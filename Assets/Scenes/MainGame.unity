@@ -20319,7 +20319,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04c4e9e2268cdaf46a09a51155b99995, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  configFilePath: Config/game_config.csv
+  configFilePath: Config/game_config_demo.csv
 --- !u!4 &638313346
 Transform:
   m_ObjectHideFlags: 0
